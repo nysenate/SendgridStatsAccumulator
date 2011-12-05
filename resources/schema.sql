@@ -3,21 +3,11 @@ CREATE TABLE event (
     email varchar(255),
     category varchar(255),
     dt_received datetime,
-    instance varchar(50),
     event varchar(50),
-    mailing_id int(10) unsigned,
-    job_id int(10) unsigned,
-    processed int(1) unsigned DEFAULT 0,
-    dt_processed datetime DEFAULT NULL,
     INDEX(event),
-    INDEX(instance),
-    INDEX(mailing_id),
-    INDEX(job_id),
     INDEX(email),
     INDEX(category),
-    INDEX(dt_received),
-    INDEX(processed),
-    INDEX(dt_processed)
+    INDEX(dt_received)
 ) ENGINE=InnoDB;
 
 

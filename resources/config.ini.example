@@ -1,18 +1,64 @@
+[database]
 ; These parameters configure the mysql connection string:
 ;   user:pass@host:port/name
-[database]
-user = 
-pass = 
+user =
+pass =
 host = localhost
 port = 3306
 name = statserver
 
+[test]
 ; These parameters are related to the Apache Configuration
 ;   url - the endpoint that sendgrid will be configured to post to
 ;   user/pass - the HTTP Auth user/pass combination for access
 ;
 ; Currently only Basic Auth is supported.
-[test]
 url = http://localhost/ssa/callback.php
 user = sendgrid
 pass = sendgrid
+
+[uniqueargs]
+; These columns would be supplied as part of the uniqueArgs field in the STMP
+; header of the emails as they were sent. Fields specified in this manner are
+; currently required to be present in all emails, this may change in the future.
+;
+; The general syntax is simple, rigid, and limited to the following:
+;   column_name = "type, [ADD INDEX(column_name)]"
+;
+; The SQL string MUST BE QUOTED because the php parse_ini_file function prohibits
+; raw parenthesis in ini files. Additionally, the SQl statements must include their
+; own trailing commas with the exception of the last line which CANNOT have one.
+; Technically speaking any valid ALTER TABLE syntax can be added after the
+; initial type definition but its not encouraged.
+
+; For example, if your mail is processed by several jobs and split into several
+; chunks you might want the following simple defintions:
+;
+;   job_id="int(10) unsigned, ADD INDEX(mailing_id),"
+;   chunk_id="int(10) unsigned, ADD INDEX(job_id)"
+;
+; The above entries will alter the main events table to include two int(10)
+; unsigned columns which will be automatically populated with the unique arguments
+; supplied by the SMTP events API.
+
+[extracolumns]
+; These columns are not referenced or used by the SGA script but
+; are columns that a specific deployment might require for other
+; processes. Since their values will never be specified on record
+; insert, its recommended that default values be supplied.
+
+; For example you may want to mark events as processed (by another
+; process) and keep the date for that processing:
+;
+;   processed="int(1) unsigned DEFAULT 0, ADD INDEX(processed),"
+;   dt_processed="datetime DEFAULT NULL, ADD INDEX(dt_processed)"
+;
+; The above entries will alter the main events table to include a
+; int(1) `processed` column and a `dt_processed` datetime column that
+; default to 0 and NULL respectively.
+;
+; The SQL string MUST BE QUOTED because the php parse_ini_file function prohibits
+; raw parenthesis in ini files. Additionally, the SQl statements must include their
+; own trailing commas with the exception of the last line which CANNOT have one.
+; Technically speaking any valid ALTER TABLE syntax can be added after the
+; initial type definition but its not encouraged.

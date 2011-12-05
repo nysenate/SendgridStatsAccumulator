@@ -62,6 +62,26 @@ if [ $load -eq 1 ]; then
     mysql -h $host -P $port -u $user -p$pass -e "CREATE DATABASE $name; USE $name"
     echo "Loading schema from $bin_dir/../resources/schema.sql"
     mysql -h $host -P $port -u $user -p$pass $name < $bin_dir/../resources/schema.sql
+
+    # Adding unique arguments to the events column now
+    echo "Adding columns for unique arguments..."
+    columns=`sed -e 's/[[:space:]]*\=[[:space:]]*/=/g' \
+            -e 's/;.*$//' \
+            -e 's/[[:space:]]*$//' \
+            -e 's/^[[:space:]]*//' \
+            -e "s/^\(.*\)=[\"']\?\([^\"']*\)[\"']\?$/ADD COLUMN \1 \2/" \
+           < $config_file | sed -n -e "/^\[uniqueargs\]/,/^\s*\[/{/^ADD COLUMN.*/p;}"`
+    mysql -h $host -P $port -u $user -p$pass $name -e "ALTER TABLE event $columns;"
+
+    # Adding extra columns to the events table now
+    echo "Adding extra columns for external manipulation..."
+    columns=`sed -e 's/[[:space:]]*\=[[:space:]]*/=/g' \
+            -e 's/;.*$//' \
+            -e 's/[[:space:]]*$//' \
+            -e 's/^[[:space:]]*//' \
+            -e "s/^\(.*\)=[\"']\?\([^\"']*\)[\"']\?$/ADD COLUMN \1 \2/" \
+           < $config_file | sed -n -e "/^\[extracolumns\]/,/^\s*\[/{/^ADD COLUMN.*/p;}"`
+    mysql -h $host -P $port -u $user -p$pass $name -e "ALTER TABLE event $columns;"
 fi
 
 if [ $test -eq 1 ]; then
@@ -77,13 +97,14 @@ if [ $test -eq 1 ]; then
     # Load up the testing data file
     tests_file=$root_dir/resources/tests.ini
     for test in `cat $tests_file | grep '\[[A-Za-z0-9_ \-]\+\]' | sed -e 's/^\[\([A-Za-z0-9_ \-]\+\)\].*/\1/' | sed ':a;N;$!ba;s/\n/ /g'`; do
-        output=`curl -i -s --user $user:$pass --url $url \`sed \
+        args=`sed \
             -e 's/[[:space:]]*\=[[:space:]]*/=/g' \
             -e 's/;.*$//' \
             -e 's/[[:space:]]*$//' \
             -e 's/^[[:space:]]*//' \
             -e "s/^\(.*\)=\([^\"']*\)$/-d \1=\2/" \
-           < $tests_file | sed -n -e "/^\[$test\]/,/^\s*\[/{/^[^;].*\=.*/p;}"\` | grep "HTTP/1.1"`
+           < $tests_file | sed -n -e "/^\[$test\]/,/^\s*\[/{/^[^;].*\=.*/p;}"`
+        output=`curl -i -s --user $user:$pass --url $url $args | grep "HTTP/1.1"`
        printf "%-15s %s\n" "$test" "$output"
     done
 fi

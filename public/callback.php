@@ -1,11 +1,22 @@
 <?php
 
-if( !$config = parse_ini_file("../config.ini",true) )
-    _log(500,"Configuration file not found at '$location'.");
+global $INT_TYPES;
+$INT_TYPES = array('int','integer','smallint','decimal','float','real','double','numeric','fixed','dec','bool','tinyint');
+
+
+$config_file = realpath(dirname(__FILE__).'/../config.ini');
+if( !$config = parse_ini_file($config_file,true) )
+    _log(500,"Configuration file not found at '$config_file'.");
 elseif(!array_key_exists('database',$config))
     _log(500,"Invalid config file. 'database' section required");
 
-create_event(retrieve_data($_POST), get_connection($config['database']));
+$uniqueArgs = array();
+if( array_key_exists('uniqueargs', $config) )
+    $uniqueArgs = $config['uniqueargs'];
+
+create_event(retrieve_data($_POST, array_keys($uniqueArgs)), get_connection($config['database']), $uniqueArgs);
+header("HTTP/1.1 200:", true, 200);
+echo "SUCCESS";
 
 function _log($type, $message) {
     error_log("[statserver] $type: $message\n", 0);
@@ -29,9 +40,9 @@ function get_connection($dbconfig) {
     return $conn;
 }
 
-function retrieve_data($source) {
-    // The combination of event specific and basic keys creates a set of required
-    // key values that we can use to strictly validate the data source.
+function retrieve_data($source, $unique_keys) {
+    // The combination of event specific, basic, and unique keys creates a set
+    // of required key values that we can use to strictly validate the data source.
     $event_keys = array(
             'bounce'      => array('response','type','status'),
             'click'       => array('url'),
@@ -43,7 +54,7 @@ function retrieve_data($source) {
             'spamreport'  => array(),
             'unsubscribe' => array());
     $event_types = array_keys($event_keys);
-    $basic_keys = array('instance', 'mailing_id', 'job_id', 'email', 'event', 'category');
+    $basic_keys = array('email', 'event', 'category');
 
     // We require a valid event type to be specified
     if( array_key_exists('event', $source) === FALSE )
@@ -53,7 +64,7 @@ function retrieve_data($source) {
 
     // Filter out all unexpected keys and validate the keyset
     $data = array();
-    $required_keys = array_merge($basic_keys, $event_keys[$source['event']]);
+    $required_keys = array_merge($basic_keys, $event_keys[$source['event']], $unique_keys);
     foreach($source as $key => $value)
         if(array_search($key, $required_keys) !== FALSE)
             $data[$key] = $value;
@@ -62,16 +73,27 @@ function retrieve_data($source) {
     return $data;
 }
 
-function create_event($data, $db) {
+function create_event($data, $db, $uniqueArgs) {
     // Sanitize the SQL arguments for safely against injection
     foreach($data as $key => $value)
         $data[$key] = mysql_real_escape_string($value, $db);
 
     // Build the generic event table insert statement
-    $insert_event = "INSERT INTO event
-                       (email, category, instance, mailing_id, job_id, dt_received)
-                     VALUES
-                       ('{$data['email']}','{$data['category']}','{$data['instance']}',{$data['mailing_id']},{$data['job_id']},NOW())";
+    global $INT_TYPES;
+    $matches = array();
+    $fields = "email, category, dt_received";
+    $values = "'{$data['email']}','{$data['category']}',NOW()";
+    foreach( $uniqueArgs as $key => $value ) {
+        if( preg_match('/^ *([A-Za-z0-9_]+).*/', $value, $matches) == 0 )
+            _log(400,"UniqueArg '$key' has an improper value. Must start with the column type.");
+
+        $fields .= ",$key";
+        if( array_search(strtolower($matches[1]), $INT_TYPES) === FALSE )
+            $values .= ",'{$data[$key]}'";
+        else
+            $values .= ",{$data[$key]}";
+    }
+    $insert_event = "INSERT INTO event ($fields) VALUES ($values)";
 
     // Build the event specific insert statement
     $insert_type = "INSERT INTO {$data['event']} ";
