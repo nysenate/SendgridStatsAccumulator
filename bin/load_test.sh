@@ -49,6 +49,6 @@ done
 
 for ((i=0; i<$count; i++)); do
     index=`expr $RANDOM % 9`
-    output=`${urls[$index]} | grep "HTTP/1.1" | sed -e "s/HTTP\/1.1 \([0-9]\+\).*/\1/"`
+    output=`${urls[$index]} | head -1`
     printf "[$worker] Running %-15s: %s\n" "${tests[$index]}" "$output"
 done
