@@ -22,8 +22,8 @@ if [ $# -eq 0 ]; then
   exit 1
 fi
 
-drop=0
-load=0
+reset=0
+setup=0
 test=0
 siege=0
 workers=0
@@ -32,8 +32,8 @@ tasks=0
 while [ $# -gt 0 ]; do
   case "$1" in
     -h|--help|help) usage; exit 0 ;;
-    setup) load=1 ;;
-    reset) drop=1; load=1 ;;
+    setup) setup=1 ;;
+    reset) reset=1; ;;
     test) test=1 ;;
     siege) siege=1; shift; workers=$1; shift; tasks=$1; ;;
     *) echo "$prog: $1: Invalid option"; usage; exit 1 ;;
@@ -52,14 +52,22 @@ eval `sed -e 's/[[:space:]]*\=[[:space:]]*/=/g' \
     | sed -n -e "/^\[database\]/,/^\s*\[/{/^[^;].*\=.*/p;}"`
 
 
-if [ $drop -eq 1 ]; then
-    echo "Dropping existing database $host:$port/$name"
-    mysql -h $host -P $port -u $user -p$pass -e "DROP DATABASE IF EXISTS $name;"
+if [ $reset -eq 1 ]; then
+    echo "Resetting existing database $host:$port/$name"
+    mysql -h $host -P $port -u $user -p$pass $name -e "
+        TRUNCATE TABLE event;
+        TRUNCATE TABLE bounce;
+        TRUNCATE TABLE click;
+        TRUNCATE TABLE deferred;
+        TRUNCATE TABLE delivered;
+        TRUNCATE TABLE dropped;
+        TRUNCATE TABLE open;
+        TRUNCATE TABLE processed;
+        TRUNCATE TABLE spamreport;
+        TRUNCATE TABLE unsubscribe;"
 fi
 
-if [ $load -eq 1 ]; then
-    echo "Creating database $host:$port/$name under user $user";
-    mysql -h $host -P $port -u $user -p$pass -e "CREATE DATABASE $name; USE $name"
+if [ $setup -eq 1 ]; then
     echo "Loading schema from $bin_dir/../resources/schema.sql"
     mysql -h $host -P $port -u $user -p$pass $name < $bin_dir/../resources/schema.sql
 
