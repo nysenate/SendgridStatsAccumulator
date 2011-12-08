@@ -98,7 +98,7 @@ function create_event($data, $db, $uniqueArgs) {
     // Build the event specific insert statement
     $insert_type = "INSERT INTO {$data['event']} ";
     switch ($data['event']) {
-        case 'bounce': $insert_type .= "(event_id, mta_response, type, status) VALUES (@event_id, '{$data['reponse']}', '{$data['type']}', '{$data['status']}')"; break;
+        case 'bounce': $insert_type .= "(event_id, mta_response, type, status) VALUES (@event_id, '{$data['response']}', '{$data['type']}', '{$data['status']}')"; break;
         case 'click': $insert_type .= "(event_id, url) VALUES (@event_id, '{$data['url']}')";break;
         case 'deferred': $insert_type .= "(event_id, mta_response, attempt_num) VALUES (@event_id, '{$data['response']}', {$data['attempt']})";break;
         case 'delivered': $insert_type .= "(event_id, mta_response) VALUES (@event_id, '{$data['response']}')";break;
