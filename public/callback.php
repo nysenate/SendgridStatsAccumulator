@@ -47,7 +47,7 @@ function retrieve_data($source, $unique_keys) {
             'bounce'      => array('response','type','status'),
             'click'       => array('url'),
             'deferred'    => array('response','attempt'),
-            'delivered'   => array('response'),
+            'delivered'   => array(), //Deliveries don't appear to actually come with responses
             'dropped'     => array('reason'),
             'open'        => array(),
             'processed'   => array(),
@@ -81,8 +81,8 @@ function create_event($data, $db, $uniqueArgs) {
     // Build the generic event table insert statement
     global $INT_TYPES;
     $matches = array();
-    $fields = "email, category, dt_received";
-    $values = "'{$data['email']}','{$data['category']}',NOW()";
+    $fields = "event, email, category, dt_received";
+    $values = "'{$data['event']}','{$data['email']}','{$data['category']}',NOW()";
     foreach( $uniqueArgs as $key => $value ) {
         if( preg_match('/^ *([A-Za-z0-9_]+).*/', $value, $matches) == 0 )
             _log(400,"UniqueArg '$key' has an improper value. Must start with the column type.");
@@ -101,8 +101,8 @@ function create_event($data, $db, $uniqueArgs) {
         case 'bounce': $insert_type .= "(event_id, mta_response, type, status) VALUES (@event_id, '{$data['response']}', '{$data['type']}', '{$data['status']}')"; break;
         case 'click': $insert_type .= "(event_id, url) VALUES (@event_id, '{$data['url']}')";break;
         case 'deferred': $insert_type .= "(event_id, mta_response, attempt_num) VALUES (@event_id, '{$data['response']}', {$data['attempt']})";break;
-        case 'delivered': $insert_type .= "(event_id, mta_response) VALUES (@event_id, '{$data['response']}')";break;
         case 'dropped': $insert_type .= "(event_id, reason) VALUES (@event_id, '{$data['reason']}')"; break;
+        case 'delivered':
         case 'open':
         case 'processed':
         case 'spamreport':
