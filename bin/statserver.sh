@@ -104,8 +104,8 @@ if [ $test -eq 1 ]; then
             -e 's/^[[:space:]]*//' \
             -e "s/^\(.*\)=\([^\"']*\)$/-d \1=\2/" \
            < $tests_file | sed -n -e "/^\[$test\]/,/^\s*\[/{/^[^;].*\=.*/p;}"`
-        output=`curl -i -s --user $user:$pass --url $url $args | grep "HTTP/1.1"`
-       printf "%-15s %s\n" "$test" "$output"
+        output=`curl -i -s --user $user:$pass --url $url $args | head -1`
+        printf "%-15s %s\n" "$test" "$output"
     done
 fi
 
