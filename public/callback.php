@@ -44,7 +44,7 @@ function retrieve_data($source, $unique_keys) {
     // The combination of event specific, basic, and unique keys creates a set
     // of required key values that we can use to strictly validate the data source.
     $event_keys = array(
-            'bounce'      => array('response','type','status'),
+            'bounce'      => array('type','status'), //Bounces also don't appear to actually come with response
             'click'       => array('url'),
             'deferred'    => array('response','attempt'),
             'delivered'   => array(), //Deliveries don't appear to actually come with responses
@@ -98,7 +98,7 @@ function create_event($data, $db, $uniqueArgs) {
     // Build the event specific insert statement
     $insert_type = "INSERT INTO {$data['event']} ";
     switch ($data['event']) {
-        case 'bounce': $insert_type .= "(event_id, mta_response, type, status) VALUES (@event_id, '{$data['response']}', '{$data['type']}', '{$data['status']}')"; break;
+        case 'bounce': $insert_type .= "(event_id, type, status) VALUES (@event_id, '{$data['type']}', '{$data['status']}')"; break;
         case 'click': $insert_type .= "(event_id, url) VALUES (@event_id, '{$data['url']}')";break;
         case 'deferred': $insert_type .= "(event_id, mta_response, attempt_num) VALUES (@event_id, '{$data['response']}', {$data['attempt']})";break;
         case 'dropped': $insert_type .= "(event_id, reason) VALUES (@event_id, '{$data['reason']}')"; break;
