@@ -26,7 +26,7 @@ function _log($type, $message) {
 
 function assert_required($data, $required_keys, $failcode) {
     if( $diff = array_diff_key(array_flip($required_keys), $data) )
-        _log($failcode,"Missing required keys:\n".print_r(array_keys($diff),TRUE));
+        _log($failcode,"Missing required keys:\n".print_r(array_keys($diff),TRUE)."\nKeys Supplied: \n".print_r($_POST,TRUE));
 }
 
 function get_connection($dbconfig) {
@@ -76,7 +76,7 @@ function retrieve_data($source, $unique_keys) {
 }
 
 function get_default($key, $data, $default) {
-    return (array_key_exists($key,$data) ? $data[$key] : $default);
+    return ((array_key_exists($key,$data) && $data[$key]!='') ? $data[$key] : $default);
 }
 
 function create_event($data, $db, $uniqueArgs) {
