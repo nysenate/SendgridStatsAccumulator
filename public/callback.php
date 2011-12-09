@@ -44,10 +44,10 @@ function retrieve_data($source, $unique_keys) {
     // The combination of event specific, basic, and unique keys creates a set
     // of required key values that we can use to strictly validate the data source.
     $event_keys = array(
-            'bounce'      => array('type','status'), //Bounces also don't appear to actually come with response
+            'bounce'      => array('response','type','status'),
             'click'       => array('url'),
             'deferred'    => array('response','attempt'),
-            'delivered'   => array(), //Deliveries don't appear to actually come with responses
+            'delivered'   => array('response'),
             'dropped'     => array('reason'),
             'open'        => array(),
             'processed'   => array(),
@@ -68,9 +68,15 @@ function retrieve_data($source, $unique_keys) {
     foreach($source as $key => $value)
         if(array_search($key, $required_keys) !== FALSE)
             $data[$key] = $value;
-    assert_required($data, $required_keys, 400);
+
+    // SendGrid doesn't seem to follow their own contracts, don't be as strict
+    assert_required($data, array_merge($basic_keys, $unique_keys), 400);
 
     return $data;
+}
+
+function get_default($key, $data, $default) {
+    return (array_key_exists($key,$data) ? $data[$key] : $default);
 }
 
 function create_event($data, $db, $uniqueArgs) {
@@ -89,20 +95,28 @@ function create_event($data, $db, $uniqueArgs) {
 
         $fields .= ",$key";
         if( array_search(strtolower($matches[1]), $INT_TYPES) === FALSE )
-            $values .= ",'{$data[$key]}'";
+            $values .= ",'".(array_key_exists($key,$data) ? $data[$key] : "")."'";
         else
-            $values .= ",{$data[$key]}";
+            $values .= ",".(array_key_exists($key,$data) ? $data[$key] : 0);
     }
     $insert_event = "INSERT INTO event ($fields) VALUES ($values)";
 
+    $response = get_default('response',$data,'');
+    $attempt = get_default('attempt',$data,0);
+    $reason = get_default('reason',$data,'');
+    $status = get_default('status',$data,'');
+    $event = get_default('event',$data,'');
+    $type = get_default('type',$data,'');
+    $type = get_default('url',$data,'');
+
     // Build the event specific insert statement
-    $insert_type = "INSERT INTO {$data['event']} ";
+    $insert_type = "INSERT INTO {$data['event']} ";{$data['response']}
     switch ($data['event']) {
-        case 'bounce': $insert_type .= "(event_id, type, status) VALUES (@event_id, '{$data['type']}', '{$data['status']}')"; break;
-        case 'click': $insert_type .= "(event_id, url) VALUES (@event_id, '{$data['url']}')";break;
-        case 'deferred': $insert_type .= "(event_id, mta_response, attempt_num) VALUES (@event_id, '{$data['response']}', {$data['attempt']})";break;
-        case 'dropped': $insert_type .= "(event_id, reason) VALUES (@event_id, '{$data['reason']}')"; break;
-        case 'delivered':
+        case 'bounce': $insert_type .= "(event_id, mta_response, type, status) VALUES (@event_id, '$response','$type', '$status')"; break;
+        case 'click': $insert_type .= "(event_id, url) VALUES (@event_id, '$url')";break;
+        case 'deferred': $insert_type .= "(event_id, mta_response, attempt_num) VALUES (@event_id, '$response', $attempt)";break;
+        case 'delivered': $insert_type .= "(event_id, mta_response) VALUES (@event_id, '$response')"; break;
+        case 'dropped': $insert_type .= "(event_id, reason) VALUES (@event_id, '$reason')"; break;
         case 'open':
         case 'processed':
         case 'spamreport':
