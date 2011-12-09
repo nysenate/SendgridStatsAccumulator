@@ -22,7 +22,7 @@ if [ $# -eq 0 ]; then
   exit 1
 fi
 
-reset=0
+teardown=0
 setup=0
 test=0
 siege=0
@@ -32,11 +32,11 @@ tasks=0
 while [ $# -gt 0 ]; do
   case "$1" in
     -h|--help|help) usage; exit 0 ;;
-    setup) setup=1 ;;
-    reset) reset=1; ;;
-    test) test=1 ;;
-    siege) siege=1; shift; workers=$1; shift; tasks=$1; ;;
-    *) echo "$prog: $1: Invalid option"; usage; exit 1 ;;
+    setup) setup=1;;
+    reset) teardown=1; setup=1;;
+    test)  test=1;;
+    siege) siege=1; shift; workers=$1; shift; tasks=$1;;
+    *) echo "$prog: $1: Invalid option"; usage; exit 1;;
   esac
   shift
 done
@@ -52,19 +52,9 @@ eval `sed -e 's/[[:space:]]*\=[[:space:]]*/=/g' \
     | sed -n -e "/^\[database\]/,/^\s*\[/{/^[^;].*\=.*/p;}"`
 
 
-if [ $reset -eq 1 ]; then
-    echo "Resetting existing database $host:$port/$name"
-    mysql -h $host -P $port -u $user -p$pass $name -e "
-        TRUNCATE TABLE event;
-        TRUNCATE TABLE bounce;
-        TRUNCATE TABLE click;
-        TRUNCATE TABLE deferred;
-        TRUNCATE TABLE delivered;
-        TRUNCATE TABLE dropped;
-        TRUNCATE TABLE open;
-        TRUNCATE TABLE processed;
-        TRUNCATE TABLE spamreport;
-        TRUNCATE TABLE unsubscribe;"
+if [ $teardown -eq 1 ]; then
+    echo "Dropping tables from existing database $host:$port/$name"
+    mysql -h $host -P $port -u $user -p$pass $name -e "DROP TABLE bounce, click, deferred, delivered, dropped, open, processed, spamreport, unsubscribe; DROP TABLE event;"
 fi
 
 if [ $setup -eq 1 ]; then
