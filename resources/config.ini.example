@@ -1,5 +1,17 @@
 ; Sendgrid Stats Accumulator sample config file
 
+[debug]
+; level = ERROR | WARN | NOTICE
+;   The warn will include errors, notice will include errors and warns
+;   Leave blank to turn logging off
+; log_file = /path/to/desired/log/file
+;   If this file can't be created an error is logged to the apache log.
+;   Leave blank if you don't want to log to file
+;
+; Currently there is no way to disable logging to the database
+debug_level=WARN
+log_file=statserver/statserver.log
+
 [database]
 ; These parameters configure the mysql connection string:
 ;   user:pass@host:port/name

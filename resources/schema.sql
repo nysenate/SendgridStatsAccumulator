@@ -1,3 +1,12 @@
+CREATE TABLE log (
+    id int(10) unsigned PRIMARY KEY AUTO_INCREMENT,
+    dt_logged datetime,
+    debug_level varchar(10),
+    message text,
+    INDEX(debug_level),
+    INDEX(dt_logged)
+);
+
 CREATE TABLE event (
     id int(10) unsigned PRIMARY KEY AUTO_INCREMENT,
     email varchar(255),
