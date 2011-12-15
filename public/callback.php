@@ -90,6 +90,12 @@ if( $diff = array_diff_key(array_flip($expected_keys),$cleaned_data) ) {
     log_("WARN","Expected keys missing for event type '$event_type': $keys");
 }
 
+//Issue warnings if more data was sent than was expected.
+if( $diff = array_diff_key($_POST,array_flip($expected_keys)) ) {
+    $keys = implode(', ',array_keys($diff));
+    log_("WARN","Unexpected keys found for event type '$event_type': $keys");
+}
+
 ////////////////////////////////////////
 // Create the new event
 //
