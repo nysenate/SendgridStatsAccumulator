@@ -122,7 +122,7 @@ foreach( $config['uniqueargs'] as $key => $value ) {
     if( array_search(strtolower($matches[1]), $numeric_types) === FALSE )
         $values .= ",'".(isset($cleaned_data[$key]) ? $cleaned_data[$key] : "")."'";
     else
-        $values .= ",".(isset($cleaned_data[$key]) ? $cleaned_data[$key] : 0);
+        $values .= ",".((isset($cleaned_data[$key]) && !is_numeric($cleaned_data[$key])) ? $cleaned_data[$key] : 0);
 }
 $insert_event = "INSERT INTO event ($fields) VALUES ($values)";
 
