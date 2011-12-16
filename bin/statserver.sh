@@ -54,7 +54,7 @@ eval `sed -e 's/[[:space:]]*\=[[:space:]]*/=/g' \
 
 if [ $teardown -eq 1 ]; then
     echo "Dropping tables from existing database $host:$port/$name"
-    mysql -h $host -P $port -u $user -p$pass $name -e "DROP TABLE log; DROP TABLE bounce, click, deferred, delivered, dropped, open, processed, spamreport, unsubscribe; DROP TABLE event;"
+    mysql -h $host -P $port -u $user -p$pass $name -e "DROP TABLE IF EXISTS log; DROP TABLE IF EXISTS bounce, click, deferred, delivered, dropped, open, processed, spamreport, unsubscribe; DROP TABLE IF EXISTS event;"
 fi
 
 if [ $setup -eq 1 ]; then
