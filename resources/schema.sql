@@ -11,12 +11,12 @@ CREATE TABLE event (
     id int(10) unsigned PRIMARY KEY AUTO_INCREMENT,
     email varchar(255),
     category varchar(255),
-    dt_received datetime,
+    `timestamp` datetime,
     event varchar(50),
     INDEX(event),
     INDEX(email),
     INDEX(category),
-    INDEX(dt_received)
+    INDEX(`timestamp`)
 ) ENGINE=InnoDB;
 
 
@@ -27,6 +27,7 @@ CREATE TABLE bounce (
     status varchar(3),
     INDEX(type),
     INDEX(status),
+    smtp_id varchar(255),
 
     FOREIGN KEY (event_id) REFERENCES event(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
@@ -48,7 +49,8 @@ CREATE TABLE deferred (
 
 CREATE TABLE delivered (
     event_id int(10) unsigned PRIMARY KEY,
-    reason text,
+    response text,
+    smtp_id varchar(255),
 
     FOREIGN KEY (event_id) REFERENCES event(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
@@ -56,6 +58,7 @@ CREATE TABLE delivered (
 CREATE TABLE dropped (
     event_id int(10) unsigned PRIMARY KEY,
     reason varchar(255),
+    smtp_id varchar(255),
     INDEX(reason),
 
     FOREIGN KEY (event_id) REFERENCES event(id) ON DELETE CASCADE
@@ -72,6 +75,7 @@ CREATE TABLE open (
 
 CREATE TABLE processed (
     event_id int(10) unsigned PRIMARY KEY,
+    smtp_id varchar(255),
     FOREIGN KEY (event_id) REFERENCES event(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 

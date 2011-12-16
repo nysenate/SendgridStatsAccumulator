@@ -55,18 +55,18 @@ log_("NOTICE",mysql_real_escape_string(http_build_query($_POST),$db));
 // The combination of event specific, basic, and unique keys creates a set
 // of required key values that we can use to strictly validate the data source.
 $event_keys = array(
-    'bounce'      => array('reason','type','status'),
+    'bounce'      => array('reason','type','status','smtp-id'),
     'click'       => array('url'),
     'deferred'    => array('reason','attempt'),
-    'delivered'   => array('reason'),
-    'dropped'     => array('reason'),
+    'delivered'   => array('response','smtp-id'),
+    'dropped'     => array('reason','smtp-id'),
     'open'        => array(),
-    'processed'   => array(),
+    'processed'   => array('smtp-id'),
     'spamreport'  => array(),
     'unsubscribe' => array()
 );
 $unique_keys = array_keys($config['uniqueargs']);
-$basic_keys = array('email', 'event', 'category');
+$basic_keys = array('email', 'event', 'category','timestamp');
 
 // We require a valid event_type to be specified
 $event_types = array_keys($event_keys);
@@ -82,7 +82,7 @@ $cleaned_data = array();
 $expected_keys = array_merge($basic_keys, $event_keys[$event_type], $unique_keys);
 foreach($_POST as $key => $value)
     if(array_search($key, $expected_keys) !== FALSE)
-        $cleaned_data[$key] = mysql_real_escape_string($value,$db);
+        $cleaned_data[$key] = mysql_real_escape_string(urldecode($value),$db);
 
 //Issue warnings if the incoming data isn't complete
 if( $diff = array_diff_key(array_flip($expected_keys),$cleaned_data) ) {
@@ -110,10 +110,11 @@ $numeric_types = array('int','integer','smallint','decimal','float','real',
 $event = get_default('event',$cleaned_data,'');
 $email = get_default('email',$cleaned_data,'');
 $category = get_default('category',$cleaned_data,'');
+$timestamp = date('Y-m-d H:i:s',get_default('timestamp',$cleaned_data,0)+60*60);
 
 $matches = array();
-$fields = "event, email, category, dt_received";
-$values = "'$event','$email','$category',NOW()";
+$fields = "event, email, category, `timestamp`";
+$values = "'$event','$email','$category','$timestamp'";
 foreach( $config['uniqueargs'] as $key => $value ) {
     if( preg_match('/^ *([A-Za-z0-9_]+).*/', $value, $matches) == 0 )
         error_out(400,"UniqueArg '$key' has an improper value. Must start with the column type.");
@@ -129,6 +130,8 @@ $insert_event = "INSERT INTO event ($fields) VALUES ($values)";
 // Build the event specific insert statement. Make sure to supply a default
 // value for each one of these fields because we may have previously issued
 // a warning about missing parameters from the POST request.
+$response = get_default('response',$cleaned_data,'');
+$smtp_id = get_default('smtp-id',$cleaned_data,'');
 $attempt = get_default('attempt',$cleaned_data,0);
 $reason = get_default('reason',$cleaned_data,'');
 $status = get_default('status',$cleaned_data,'');
@@ -138,13 +141,13 @@ $url = get_default('url',$cleaned_data,'');
 
 $insert_type = "INSERT INTO $event ";
 switch ($event) {
-    case 'bounce': $insert_type .= "(event_id, reason, type, status) VALUES (@event_id, '$reason','$type', '$status')"; break;
+    case 'bounce': $insert_type .= "(event_id, reason, type, status, smtp-id) VALUES (@event_id, '$reason','$type', '$status','$smtp_id')"; break;
     case 'click': $insert_type .= "(event_id, url) VALUES (@event_id, '$url')"; break;
     case 'deferred': $insert_type .= "(event_id, reason, attempt_num) VALUES (@event_id, '$reason', $attempt)";break;
-    case 'delivered': $insert_type .= "(event_id, reason) VALUES (@event_id, '$reason')"; break;
-    case 'dropped': $insert_type .= "(event_id, reason) VALUES (@event_id, '$reason')"; break;
+    case 'delivered': $insert_type .= "(event_id, response, smtp_id) VALUES (@event_id, '$response', '$smtp_id')"; break;
+    case 'dropped': $insert_type .= "(event_id, reason , smtp_id) VALUES (@event_id, '$reason', '$smtp_id')"; break;
+    case 'processed': $insert_type .= "(event_id, smtp_id) VALUES (@event_id,'$smtp_id')"; break;
     case 'open':
-    case 'processed':
     case 'spamreport':
     case 'unsubscribe': $insert_type .= "(event_id) VALUES (@event_id)"; break;
 };
