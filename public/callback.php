@@ -209,7 +209,7 @@ function log_($debug_level, $message) {
             fwrite($handle, "$date [$debug_level] $message\n");
             fclose($handle);
         } else {
-            error_log("$[statserver] Could not open '$filepath' for writing.");
+            error_log("[statserver] Could not open '$filepath' for writing.");
             if($debug_level == 'ERROR')
                  error_log("[statserver] $message");
         }
