@@ -22,7 +22,7 @@ CREATE TABLE event (
 
 CREATE TABLE bounce (
     event_id int(10) unsigned PRIMARY KEY,
-    mta_response text,
+    reason text,
     type varchar(20),
     status varchar(3),
     INDEX(type),
@@ -40,7 +40,7 @@ CREATE TABLE click (
 
 CREATE TABLE deferred (
     event_id int(10) unsigned PRIMARY KEY,
-    mta_response text,
+    reason text,
     attempt_num  int(10) unsigned,
 
     FOREIGN KEY (event_id) REFERENCES event(id) ON DELETE CASCADE
@@ -48,7 +48,7 @@ CREATE TABLE deferred (
 
 CREATE TABLE delivered (
     event_id int(10) unsigned PRIMARY KEY,
-    mta_response text,
+    reason text,
 
     FOREIGN KEY (event_id) REFERENCES event(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;

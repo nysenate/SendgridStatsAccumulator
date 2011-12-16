@@ -55,10 +55,10 @@ log_("NOTICE",mysql_real_escape_string(http_build_query($_POST),$db));
 // The combination of event specific, basic, and unique keys creates a set
 // of required key values that we can use to strictly validate the data source.
 $event_keys = array(
-    'bounce'      => array('response','type','status'),
+    'bounce'      => array('reason','type','status'),
     'click'       => array('url'),
-    'deferred'    => array('response','attempt'),
-    'delivered'   => array('response'),
+    'deferred'    => array('reason','attempt'),
+    'delivered'   => array('reason'),
     'dropped'     => array('reason'),
     'open'        => array(),
     'processed'   => array(),
@@ -129,7 +129,6 @@ $insert_event = "INSERT INTO event ($fields) VALUES ($values)";
 // Build the event specific insert statement. Make sure to supply a default
 // value for each one of these fields because we may have previously issued
 // a warning about missing parameters from the POST request.
-$response = get_default('response',$cleaned_data,'');
 $attempt = get_default('attempt',$cleaned_data,0);
 $reason = get_default('reason',$cleaned_data,'');
 $status = get_default('status',$cleaned_data,'');
@@ -139,10 +138,10 @@ $url = get_default('url',$cleaned_data,'');
 
 $insert_type = "INSERT INTO $event ";
 switch ($event) {
-    case 'bounce': $insert_type .= "(event_id, mta_response, type, status) VALUES (@event_id, '$response','$type', '$status')"; break;
+    case 'bounce': $insert_type .= "(event_id, reason, type, status) VALUES (@event_id, '$reason','$type', '$status')"; break;
     case 'click': $insert_type .= "(event_id, url) VALUES (@event_id, '$url')"; break;
-    case 'deferred': $insert_type .= "(event_id, mta_response, attempt_num) VALUES (@event_id, '$response', $attempt)";break;
-    case 'delivered': $insert_type .= "(event_id, mta_response) VALUES (@event_id, '$response')"; break;
+    case 'deferred': $insert_type .= "(event_id, reason, attempt_num) VALUES (@event_id, '$reason', $attempt)";break;
+    case 'delivered': $insert_type .= "(event_id, reason) VALUES (@event_id, '$reason')"; break;
     case 'dropped': $insert_type .= "(event_id, reason) VALUES (@event_id, '$reason')"; break;
     case 'open':
     case 'processed':
