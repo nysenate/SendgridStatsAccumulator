@@ -201,13 +201,15 @@ function log_($debug_level, $message) {
     if( $config_key < $message_key )
         return;
 
+    $date = date('Y-m-d H:i:s');
+
     //Log to the filesystem
     if( $filepath=get_default('log_file', $debug_config, false) ) {
         if( $handle = fopen($filepath,'a') ) {
-            fwrite($handle, "[$debug_level] $message\n");
+            fwrite($handle, "$date [$debug_level] $message\n");
             fclose($handle);
         } else {
-            error_log("[statserver] Could not open '$filepath' for writing.");
+            error_log("$[statserver] Could not open '$filepath' for writing.");
             if($debug_level == 'ERROR')
                  error_log("[statserver] $message");
         }
