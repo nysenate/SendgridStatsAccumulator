@@ -141,7 +141,7 @@ $url = get_default('url',$cleaned_data,'');
 
 $insert_type = "INSERT INTO $event ";
 switch ($event) {
-    case 'bounce': $insert_type .= "(event_id, reason, type, status, smtp-id) VALUES (@event_id, '$reason','$type', '$status','$smtp_id')"; break;
+    case 'bounce': $insert_type .= "(event_id, reason, type, status, smtp_id) VALUES (@event_id, '$reason','$type', '$status','$smtp_id')"; break;
     case 'click': $insert_type .= "(event_id, url) VALUES (@event_id, '$url')"; break;
     case 'deferred': $insert_type .= "(event_id, reason, attempt_num) VALUES (@event_id, '$reason', $attempt)";break;
     case 'delivered': $insert_type .= "(event_id, response, smtp_id) VALUES (@event_id, '$response', '$smtp_id')"; break;
