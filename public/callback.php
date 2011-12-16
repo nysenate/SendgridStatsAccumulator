@@ -135,7 +135,7 @@ $reason = get_default('reason',$cleaned_data,'');
 $status = get_default('status',$cleaned_data,'');
 $event = get_default('event',$cleaned_data,'');
 $type = get_default('type',$cleaned_data,'');
-$type = get_default('url',$cleaned_data,'');
+$url = get_default('url',$cleaned_data,'');
 
 $insert_type = "INSERT INTO $event ";
 switch ($event) {
