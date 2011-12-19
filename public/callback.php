@@ -15,7 +15,7 @@ if($_SERVER['CONTENT_TYPE']=='application/json') {
         create_event($config, json_decode($jsonData), $db);
     }
 } else {
-    log_("NOTICE",mysql_real_escape_string(http_build_query($_POST,$db)));
+    log_("NOTICE",mysql_real_escape_string(http_build_query($_POST),$db));
     create_event($config, $_POST, $db);
 }
 
