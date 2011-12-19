@@ -1,184 +1,186 @@
 <?php
 
-//////////////////////////////////
-// Initialize
+//Load up the configuration
+$config_path = realpath(dirname(__FILE__).'/../config.ini');
+$config = load_config($config_path);
 
-//Ensure that the configuration file has a database section, all other
-//sections are optional and we'll supply sane defaults instead
-$config_constraints = array(
-    'database' => array(
-        'required' => true,
-        'defaults' => array()
-    ),
-    'debug' => array(
-        'required' => false,
-        'defaults' => array('debug_level'=>1)
-    ),
-    'extracolumns' => array(
-        'required' => false,
-        'defaults' => array()
-    ),
-    'uniqueargs' => array(
-        'required' => false,
-        'defaults' => array()
-    ),
-);
+//Log the request parameters, encoded as a string for replication (curl)
+$db = get_db_connection();
 
-// If we can't find and load the configuration file just die immediately
-// SendGrid will put the event into a deferred queue and try again later
-$config_file = realpath(dirname(__FILE__).'/../config.ini');
-if( !$config = parse_ini_file($config_file,true) )
-    error_out(500,"Configuration file not found at '$config_file'.");
-
-// Enforce the constraints and throw errors as necessary, in the future it
-// would probably be better to accumulate configuration errors and die after
-// they have all been generated.
-foreach($config_constraints as $section => $constraints) {
-    if(!array_key_exists($section, $config)) {
-        if($constraints['required'])
-            _log(500,"Invalid config file. '$section' section required");
-        else
-            $config[$section] = array();
+if($_SERVER['CONTENT_TYPE']=='application/json') {
+    //Process the batched data, separated json objects by new lines
+    $batchData = file_get_contents("php://input");
+    log_("NOTICE",mysql_real_escape_string($batchData));
+    for(explode("\n",$batchData) as $jsonData) {
+        create_event($config, json_decode($jsonData), $db);
     }
+} else {
+    log_("NOTICE",mysql_real_escape_string(http_build_query($_POST,$db));
+    create_event($config, $_POST, $db);
+}
+
+//Return the success code to SendGrid
+//We would have died already if something went wrong
+header("HTTP/1.1 200:", true, 200);
+echo "SUCCESS";
+
+function create_event($config, $data, $db) {
+    // The combination of event specific, basic, and unique keys creates a set
+    // of required key values that we can use to strictly validate the data source.
+    $event_keys = array(
+        'bounce'      => array('reason','type','status','smtp-id'),
+        'click'       => array('url'),
+        'deferred'    => array('response','attempt'),
+        'delivered'   => array('response','smtp-id'),
+        'dropped'     => array('reason','smtp-id'),
+        'open'        => array(),
+        'processed'   => array('smtp-id'),
+        'spamreport'  => array(),
+        'unsubscribe' => array()
+    );
+    $unique_keys = array_keys($config['uniqueargs']);
+    $basic_keys = array('email', 'event', 'category','timestamp');
+
+    // We require a valid event_type to be specified
+    $event_types = array_keys($event_keys);
+    if(! ($event_type = get_default('event', $data, false)) )
+        error_out(400,"Event parameter must be specified and non-empty");
+
+    elseif( array_search($event_type,array_keys($event_keys)) === FALSE )
+        error_out(400,"Event type '$event_type' is invalid.");
+
+    // Filter out all unexpected keys and validate the keyset
+    // Also sanitize the SQL arguments for safety against injection
+    $cleaned_data = array();
+    $expected_keys = array_merge($basic_keys, $event_keys[$event_type], $unique_keys);
+    foreach($data as $key => $value)
+        if(array_search($key, $expected_keys) !== FALSE)
+            $cleaned_data[$key] = mysql_real_escape_string(urldecode($value),$db);
+
+    //Issue warnings if the incoming data isn't complete
+    if( $diff = array_diff_key(array_flip($expected_keys),$cleaned_data) ) {
+        $keys = implode(', ',array_keys($diff));
+        log_("WARN","Expected keys missing for event type '$event_type': $keys");
+    }
+
+    //Issue warnings if more data was sent than was expected.
+    if( $diff = array_diff_key($data,array_flip($expected_keys)) ) {
+        $keys = implode(', ',array_keys($diff));
+        log_("WARN","Unexpected keys found for event type '$event_type': $keys");
+    }
+
+    // Build the generic event table insert statement. We need to be careful
+    // here because unique arguments can be string or non string types and must
+    // be written into the sql statement differently (with respect to ''s)
+    // TODO: Validate that an numeric column has an integer value going into it
+    $numeric_types = array('int','integer','smallint','decimal','float','real',
+                           'double','numeric','fixed','dec','bool','tinyint');
+
+    $event = get_default('event',$cleaned_data,'');
+    $email = get_default('email',$cleaned_data,'');
+    $category = get_default('category',$cleaned_data,'');
+    $timestamp = date('Y-m-d H:i:s',get_default('timestamp',$cleaned_data,0)+60*60);
+
+    $matches = array();
+    $fields = "event, email, category, `timestamp`";
+    $values = "'$event','$email','$category','$timestamp'";
+    foreach( $config['uniqueargs'] as $key => $value ) {
+        if( preg_match('/^ *([A-Za-z0-9_]+).*/', $value, $matches) == 0 )
+            error_out(400,"UniqueArg '$key' has an improper value. Must start with the column type.");
+
+        $fields .= ",$key";
+        if( array_search(strtolower($matches[1]), $numeric_types) === FALSE )
+            $values .= ",'".(isset($cleaned_data[$key]) ? $cleaned_data[$key] : "")."'";
+        else
+            $values .= ",".((isset($cleaned_data[$key]) && is_numeric($cleaned_data[$key])) ? $cleaned_data[$key] : 0);
+    }
+    $insert_event = "INSERT INTO event ($fields) VALUES ($values)";
+
+    // Build the event specific insert statement. Make sure to supply a default
+    // value for each one of these fields because we may have previously issued
+    // a warning about missing parameters from the POST request.
+    $response = get_default('response',$cleaned_data,'');
+    $smtp_id = get_default('smtp-id',$cleaned_data,'');
+    $attempt = get_default('attempt',$cleaned_data,0);
+    $reason = get_default('reason',$cleaned_data,'');
+    $status = get_default('status',$cleaned_data,'');
+    $event = get_default('event',$cleaned_data,'');
+    $type = get_default('type',$cleaned_data,'');
+    $url = get_default('url',$cleaned_data,'');
+
+    $insert_type = "INSERT INTO $event ";
+    switch ($event) {
+        case 'bounce': $insert_type .= "(event_id, reason, type, status, smtp_id) VALUES (@event_id, '$reason','$type', '$status','$smtp_id')"; break;
+        case 'click': $insert_type .= "(event_id, url) VALUES (@event_id, '$url')"; break;
+        case 'deferred': $insert_type .= "(event_id, reason, attempt_num) VALUES (@event_id, '$reason', $attempt)";break;
+        case 'delivered': $insert_type .= "(event_id, response, smtp_id) VALUES (@event_id, '$response', '$smtp_id')"; break;
+        case 'dropped': $insert_type .= "(event_id, reason , smtp_id) VALUES (@event_id, '$reason', '$smtp_id')"; break;
+        case 'processed': $insert_type .= "(event_id, smtp_id) VALUES (@event_id,'$smtp_id')"; break;
+        case 'open':
+        case 'spamreport':
+        case 'unsubscribe': $insert_type .= "(event_id) VALUES (@event_id)"; break;
+    };
+
+    // Run a sequence of SQL queries, locked in a transaction for consistency
+    $queries = array(
+        "SET autocommit=0",
+        "BEGIN",
+        $insert_event,
+        "SET @event_id := LAST_INSERT_ID()",
+        $insert_type,
+        "COMMIT"
+    );
+
+    // I can't believe php doesn't let you execute multiple queries at once...
+    foreach($queries as $sql)
+        exec_query($sql);
+}
+
+
+function load_config($config_file) {
+    //Ensure that the configuration file has a database section, all other
+    //sections are optional and we'll supply sane defaults instead
+    $config_constraints = array(
+        'database' => array(
+            'required' => true,
+            'defaults' => array()
+        ),
+        'debug' => array(
+            'required' => false,
+            'defaults' => array('debug_level'=>1)
+        ),
+        'extracolumns' => array(
+            'required' => false,
+            'defaults' => array()
+        ),
+        'uniqueargs' => array(
+            'required' => false,
+            'defaults' => array()
+        ),
+    );
+
+    // If we can't find and load the configuration file just die immediately
+    // SendGrid will put the event into a deferred queue and try again later
+    if( !$config = parse_ini_file($config_file,true) )
+        error_out(500,"Configuration file not found at '$config_file'.");
+
+    // Enforce the constraints and throw errors as necessary, in the future it
+    // would probably be better to accumulate configuration errors and die after
+    // they have all been generated.
+    foreach($config_constraints as $section => $constraints) {
+        if(!array_key_exists($section, $config)) {
+            if($constraints['required'])
+                _log(500,"Invalid config file. '$section' section required");
+            else
+                $config[$section] = array();
+        }
 
         $config[$section] = array_merge($constraints['defaults'],$config[$section]);
     }
 
-//Log the request parameters, encoded as a string for replication (curl)
-$db = get_db_connection();
-log_("NOTICE",mysql_real_escape_string(http_build_query($_POST),$db));
-
-//////////////////////////////////////
-// Clean the incoming data
-//
-
-// The combination of event specific, basic, and unique keys creates a set
-// of required key values that we can use to strictly validate the data source.
-$event_keys = array(
-    'bounce'      => array('reason','type','status','smtp-id'),
-    'click'       => array('url'),
-    'deferred'    => array('response','attempt'),
-    'delivered'   => array('response','smtp-id'),
-    'dropped'     => array('reason','smtp-id'),
-    'open'        => array(),
-    'processed'   => array('smtp-id'),
-    'spamreport'  => array(),
-    'unsubscribe' => array()
-);
-$unique_keys = array_keys($config['uniqueargs']);
-$basic_keys = array('email', 'event', 'category','timestamp');
-
-// We require a valid event_type to be specified
-$event_types = array_keys($event_keys);
-if(! ($event_type = get_default('event', $_POST, false)) )
-    error_out(400,"Event parameter must be specified and non-empty");
-
-elseif( array_search($event_type,array_keys($event_keys)) === FALSE )
-    error_out(400,"Event type '$event_type' is invalid.");
-
-// Filter out all unexpected keys and validate the keyset
-// Also sanitize the SQL arguments for safety against injection
-$cleaned_data = array();
-$expected_keys = array_merge($basic_keys, $event_keys[$event_type], $unique_keys);
-foreach($_POST as $key => $value)
-    if(array_search($key, $expected_keys) !== FALSE)
-        $cleaned_data[$key] = mysql_real_escape_string(urldecode($value),$db);
-
-//Issue warnings if the incoming data isn't complete
-if( $diff = array_diff_key(array_flip($expected_keys),$cleaned_data) ) {
-    $keys = implode(', ',array_keys($diff));
-    log_("WARN","Expected keys missing for event type '$event_type': $keys");
+    return $config;
 }
 
-//Issue warnings if more data was sent than was expected.
-if( $diff = array_diff_key($_POST,array_flip($expected_keys)) ) {
-    $keys = implode(', ',array_keys($diff));
-    log_("WARN","Unexpected keys found for event type '$event_type': $keys");
-}
-
-////////////////////////////////////////
-// Create the new event
-//
-
-// Build the generic event table insert statement. We need to be careful
-// here because unique arguments can be string or non string types and must
-// be written into the sql statement differently (with respect to ''s)
-// TODO: Validate that an numeric column has an integer value going into it
-$numeric_types = array('int','integer','smallint','decimal','float','real',
-                       'double','numeric','fixed','dec','bool','tinyint');
-
-$event = get_default('event',$cleaned_data,'');
-$email = get_default('email',$cleaned_data,'');
-$category = get_default('category',$cleaned_data,'');
-$timestamp = date('Y-m-d H:i:s',get_default('timestamp',$cleaned_data,0)+60*60);
-
-$matches = array();
-$fields = "event, email, category, `timestamp`";
-$values = "'$event','$email','$category','$timestamp'";
-foreach( $config['uniqueargs'] as $key => $value ) {
-    if( preg_match('/^ *([A-Za-z0-9_]+).*/', $value, $matches) == 0 )
-        error_out(400,"UniqueArg '$key' has an improper value. Must start with the column type.");
-
-    $fields .= ",$key";
-    if( array_search(strtolower($matches[1]), $numeric_types) === FALSE )
-        $values .= ",'".(isset($cleaned_data[$key]) ? $cleaned_data[$key] : "")."'";
-    else
-        $values .= ",".((isset($cleaned_data[$key]) && is_numeric($cleaned_data[$key])) ? $cleaned_data[$key] : 0);
-}
-$insert_event = "INSERT INTO event ($fields) VALUES ($values)";
-
-// Build the event specific insert statement. Make sure to supply a default
-// value for each one of these fields because we may have previously issued
-// a warning about missing parameters from the POST request.
-$response = get_default('response',$cleaned_data,'');
-$smtp_id = get_default('smtp-id',$cleaned_data,'');
-$attempt = get_default('attempt',$cleaned_data,0);
-$reason = get_default('reason',$cleaned_data,'');
-$status = get_default('status',$cleaned_data,'');
-$event = get_default('event',$cleaned_data,'');
-$type = get_default('type',$cleaned_data,'');
-$url = get_default('url',$cleaned_data,'');
-
-$insert_type = "INSERT INTO $event ";
-switch ($event) {
-    case 'bounce': $insert_type .= "(event_id, reason, type, status, smtp_id) VALUES (@event_id, '$reason','$type', '$status','$smtp_id')"; break;
-    case 'click': $insert_type .= "(event_id, url) VALUES (@event_id, '$url')"; break;
-    case 'deferred': $insert_type .= "(event_id, reason, attempt_num) VALUES (@event_id, '$reason', $attempt)";break;
-    case 'delivered': $insert_type .= "(event_id, response, smtp_id) VALUES (@event_id, '$response', '$smtp_id')"; break;
-    case 'dropped': $insert_type .= "(event_id, reason , smtp_id) VALUES (@event_id, '$reason', '$smtp_id')"; break;
-    case 'processed': $insert_type .= "(event_id, smtp_id) VALUES (@event_id,'$smtp_id')"; break;
-    case 'open':
-    case 'spamreport':
-    case 'unsubscribe': $insert_type .= "(event_id) VALUES (@event_id)"; break;
-};
-
-// Run a sequence of SQL queries, locked in a transaction for consistency
-$queries = array(
-    "SET autocommit=0",
-    "BEGIN",
-    $insert_event,
-    "SET @event_id := LAST_INSERT_ID()",
-    $insert_type,
-    "COMMIT"
-);
-
-// I can't believe php doesn't let you execute multiple queries at once...
-foreach($queries as $sql)
-    exec_query($sql);
-
-
-//Return the success code to SendGrid
-header("HTTP/1.1 200:", true, 200);
-echo "SUCCESS";
-
-
-
-
-
-
-
-///////////////////////////////////
-// Support Functions
 
 function error_out($type, $message) {
     log_("ERROR", "[statserver] $type: $message");
