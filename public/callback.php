@@ -14,7 +14,7 @@ if(strpos($_SERVER['CONTENT_TYPE'],'application/json') !== FALSE) {
     $batchData = file_get_contents("php://input");
     log_("NOTICE",mysql_real_escape_string($batchData));
     foreach(explode("\n",$batchData) as $jsonData) {
-        create_event($config, json_decode($jsonData), $db);
+        create_event($config, (array)json_decode($jsonData), $db);
     }
 } else {
     log_("NOTICE",mysql_real_escape_string(http_build_query($_POST),$db));
