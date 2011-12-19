@@ -11,9 +11,9 @@ log_("NOTICE",print_r($_SERVER,TRUE));
 
 if(strpos($_SERVER['CONTENT_TYPE'],'application/json') !== FALSE) {
     //Process the batched data, separated json objects by new lines
-    $batchData = file_get_contents("php://input");
-    log_("NOTICE",mysql_real_escape_string($batchData));
-    foreach(explode("\n",$batchData) as $jsonData) {
+    $batchData = file("php://input", FILE_IGNORE_NEW_LINES|FILE_SKIP_NEW_LINES);
+    log_("NOTICE",mysql_real_escape_string(print_r($batchData,true)));
+    foreach($batchData as $jsonData) {
         create_event($config, json_decode($jsonData, true), $db);
     }
 } else {
