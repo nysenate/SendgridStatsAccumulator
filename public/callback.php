@@ -7,7 +7,9 @@ $config = load_config($config_path);
 //Log the request parameters, encoded as a string for replication (curl)
 $db = get_db_connection();
 
-if($_SERVER['CONTENT_TYPE']=='application/json') {
+log_("NOTICE",print_r($_SERVER,TRUE));
+
+if(strpos($_SERVER['CONTENT_TYPE'],'application/json') !== FALSE) {
     //Process the batched data, separated json objects by new lines
     $batchData = file_get_contents("php://input");
     log_("NOTICE",mysql_real_escape_string($batchData));
