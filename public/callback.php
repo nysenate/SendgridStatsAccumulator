@@ -57,7 +57,7 @@ log_("NOTICE",mysql_real_escape_string(http_build_query($_POST),$db));
 $event_keys = array(
     'bounce'      => array('reason','type','status','smtp-id'),
     'click'       => array('url'),
-    'deferred'    => array('reason','attempt'),
+    'deferred'    => array('response','attempt'),
     'delivered'   => array('response','smtp-id'),
     'dropped'     => array('reason','smtp-id'),
     'open'        => array(),
