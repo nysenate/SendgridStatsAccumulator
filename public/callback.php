@@ -7,8 +7,6 @@ $config = load_config($config_path);
 //Log the request parameters, encoded as a string for replication (curl)
 $db = get_db_connection();
 
-log_("NOTICE",print_r($_SERVER,TRUE));
-
 if(strpos($_SERVER['CONTENT_TYPE'],'application/json') !== FALSE) {
     //Process the batched data, separated json objects by new lines
     $batchData = file("php://input", FILE_IGNORE_NEW_LINES|FILE_SKIP_NEW_LINES);
