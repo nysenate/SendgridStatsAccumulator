@@ -79,7 +79,7 @@ function create_event($config, $data, $db) {
     $event = get_default('event',$cleaned_data,'');
     $email = get_default('email',$cleaned_data,'');
     $category = get_default('category',$cleaned_data,'');
-    $timestamp = date('Y-m-d H:i:s',get_default('timestamp',$cleaned_data,0)+60*60);
+    $timestamp = date('Y-m-d H:i:s',get_default('timestamp',$cleaned_data,0));
 
     $matches = array();
     $fields = "event, email, category, `timestamp`";
