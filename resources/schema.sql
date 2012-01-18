@@ -24,7 +24,7 @@ CREATE TABLE bounce (
     event_id int(10) unsigned PRIMARY KEY,
     reason text,
     type varchar(20),
-    status varchar(3),
+    status varchar(8),
     INDEX(type),
     INDEX(status),
     smtp_id varchar(255),
