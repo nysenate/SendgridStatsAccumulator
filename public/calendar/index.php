@@ -30,7 +30,18 @@ function getCountBySenatorQuery($dateList)
 {
     $date4_default = (isset($_POST['date4']) ? $_POST['date4'] : date('Y-m-d')); 
     $date3_default = (isset($_POST['date3']) ? $_POST['date3'] : date('Y-m-d', strtotime('-4 week'))); 
-    $senatorsQuery = mysql_query("SELECT instance, category, mailing_id, event, count(queue_id) as total FROM event WHERE timestamp > '2011-00-00 00:00:00' and timestamp > '".$date3_default." 00:00:00' and timestamp < '".$date4_default." 00:00:00' and instance <> '' and instance <> 'sd99' and instance <> 'Training1'  GROUP BY instance, mailing_id, event Order By instance asc;");
+    $senatorsQuery = mysql_query("
+    select instance, category, event.mailing_id, event, count(id)  as total
+        from event
+        join ( select DISTINCT e.mailing_id AS mid
+        from event as e
+            where e.install_class='prod'
+            and e.timestamp > '".$date3_default." 00:00:00'
+            and e.timestamp < '".$date4_default." 23:59:59'
+            and e.event = 'processed' ) AS mailing
+        ON event.mailing_id = mailing.mid
+        where instance <> '' and instance <> 'sd99' and instance <> 'Training1' and install_class='prod' 
+    group by instance, mailing_id, event");
     getDataSenatorTable($senatorsQuery);
 }
 function senatorDropdown()
@@ -53,11 +64,14 @@ function totalSenator($data,$value)
                 unset($summationOfSenator);
                 $summationOfSenator = array();
             }
-            if(($data[$i-1]['mailing_id'] != $data[$i]['mailing_id']) && isset($data[$i]['mailing_id']) )
+            if(
+                ($data[$i-1]['mailing_id'] != $data[$i]['mailing_id']) || 
+                (
+                    ($data[$i-1]['instance'] != $data[$i]['instance']) && ($data[$i-1]['mailing_id'] == $data[$i]['mailing_id'])
+                )  && isset($data[$i]['mailing_id']))
             {
                 print('<div class="date"> <span>Mailing ID: ' . $data[$i]['mailing_id']) .' </span>';
             }
-            
             print('<div class="item">'); 
                 print('<div>');
                 print($data[$i]['event']);
@@ -66,7 +80,7 @@ function totalSenator($data,$value)
                 print($data[$i]['total']);
                 print('</div>');
             print('</div>');
-            if(($data[$i-1]['mailing_id'] != $data[$i]['mailing_id']) && isset($data[$i]['mailing_id']) )
+            if(($data[$i-1]['mailing_id'] != $data[$i]['mailing_id']) && ($data[$i-1]['instance'] != $data[$i]['instance']) && isset($data[$i]['mailing_id']) )
             {
                 print('</div>');
             }
@@ -163,23 +177,6 @@ function getDataSenatorTable($datesQuery)
     }
 
 }
-//result :
-/* 
-DATE( TIMESTAMP )
-2012-01-19
-*/
-/*
-event   count(event)
-bounce  202
-click   499
-deferred    3021
-delivered   42442
-dropped 601
-open    7166
-processed   42440
-spamreport  44
-unsubscribe 78*/
-
 ?>
 <html>
 <head>
