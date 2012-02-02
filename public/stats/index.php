@@ -38,9 +38,42 @@ function getCountBySenatorQuery($dateList)
             where e.install_class='prod'
             and e.timestamp > '".$date3_default." 00:00:00'
             and e.timestamp < '".$date4_default." 23:59:59'
-            and (e.event = 'processed' or e.event = 'open') ) AS mailing
+            and e.event = 'processed') AS mailing
         ON event.mailing_id = mailing.mid
-        where instance <> '' and instance <> 'sd99' and instance <> 'Training1' and install_class='prod' 
+        where instance <> '' and instance <> 'sd99' and instance <> 'Training1' and install_class='prod'
+        and (
+        instance = 'lanza' or
+        instance = 'golden' or
+        instance = 'martins' or
+        instance = 'hannon' or
+        instance = 'marcellino' or
+        instance = 'ojohnson' or
+        instance = 'zeldin' or
+        instance = 'flanagan' or
+        instance = 'lavelle' or
+        instance = 'fuschillo' or
+        instance = 'skelos' or
+        instance = 'bonacic' or
+        instance = 'larkin' or
+        instance = 'farley' or
+        instance = 'mcdonald' or
+        instance = 'lettle' or
+        instance = 'saland' or
+        instance = 'ball' or
+        instance = 'griffo' or
+        instance = 'defrancisco' or
+        instance = 'seward' or
+        instance = 'libous' or
+        instance = 'omara' or
+        instance = 'nozzolio' or
+        instance = 'ritchie' or
+        instance = 'robach' or
+        instance = 'alesi' or
+        instance = 'young' or
+        instance = 'galavan' or
+        instance = 'grisanti' or
+        instance = 'ransenhofer' or
+        instance = 'maziarz') 
     group by instance, mailing_id, event");
     getDataSenatorTable($senatorsQuery);
 }
@@ -70,7 +103,7 @@ function totalSenator($data,$value)
                     ($data[$i-1]['instance'] != $data[$i]['instance']) && ($data[$i-1]['mailing_id'] == $data[$i]['mailing_id'])
                 )  && isset($data[$i]['mailing_id']))
             {
-                print('<div class="date"> <span>Mailing ID: ' . $data[$i]['mailing_id']) .' </span>';
+                print('<div class="date"><div class="mailingID"><div>Mailing ID: ' . $data[$i]['mailing_id'] .' </div><div class="text">'. $data[$i]['category'] .'</div></div>');
             }
             print('<div class="item">'); 
                 print('<div>');
@@ -80,7 +113,7 @@ function totalSenator($data,$value)
                 print($data[$i]['total']);
                 print('</div>');
             print('</div>');
-            if(($data[$i-1]['mailing_id'] != $data[$i]['mailing_id']) && ($data[$i-1]['instance'] != $data[$i]['instance']) && isset($data[$i]['mailing_id']) )
+            if(($data[$i+1]['mailing_id'] != $data[$i]['mailing_id']) && isset($data[$i]['mailing_id']) )
             {
                 print('</div>');
             }
@@ -102,7 +135,7 @@ function totalSenator($data,$value)
                         }
                     }
                 }
-                print('<div class="date"> <span>Mailing ID: TOTAL </span>');
+                print('<div class="date"> <span class="mailingID">Mailing ID: TOTAL </span>');
                 ksort($summationOfSenator);
                 foreach($summationOfSenator as $event=>$total)
                 {
@@ -217,7 +250,8 @@ ol, ul {
 .senatorName {font-size:18px; padding-bottom:5px; margin-bottom:5px; border-bottom:1px solid black;}
 .item {padding:5px; text-align:center; width:70px; float:left;}
 .item div {margin-bottom:5px;}
-.date span {font-weight: bold; float:left; width: 125px; margin-right:10px;}
+.date .mailingID {font-weight: bold; float:left; width: 150px; margin-right:10px; margin-bottom:5px;}
+.date .mailingID .text {font-weight:normal; font-size:10px;}
 .date {clear:both;}
 .dateRange {text-align:left; padding:10px; clear:both;}
 .dateRange span {}
@@ -248,7 +282,7 @@ require_once('../../lib/tc_calendar.php');
       $myCalendar->setDate(date('d', strtotime($date3_default))
             , date('m', strtotime($date3_default))
             , date('Y', strtotime($date3_default)));
-      $myCalendar->setPath("/calendar/");
+      $myCalendar->setPath("/stats/");
       $myCalendar->setYearInterval(1970, 2020);
       $myCalendar->setAlignment('left', 'bottom');
       $myCalendar->setDatePair('date3', 'date4', $date4_default);
@@ -260,7 +294,7 @@ require_once('../../lib/tc_calendar.php');
       $myCalendar->setDate(date('d', strtotime($date4_default))
            , date('m', strtotime($date4_default))
            , date('Y', strtotime($date4_default)));
-      $myCalendar->setPath("/calendar/");
+      $myCalendar->setPath("/stats/");
       $myCalendar->setYearInterval(1970, 2020);
       $myCalendar->setAlignment('left', 'bottom');
       $myCalendar->setDatePair('date3', 'date4', $date3_default);
