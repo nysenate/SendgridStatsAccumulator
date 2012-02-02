@@ -38,7 +38,7 @@ function getCountBySenatorQuery($dateList)
             where e.install_class='prod'
             and e.timestamp > '".$date3_default." 00:00:00'
             and e.timestamp < '".$date4_default." 23:59:59'
-            and e.event = 'processed' or e.event = 'open') AS mailing
+            and e.event = 'processed' ) AS mailing
         ON event.mailing_id = mailing.mid
         where instance <> '' and instance <> 'sd99' and instance <> 'Training1' and install_class='prod'
         and (
