@@ -1,35 +1,26 @@
 <?php
-error_reporting(E_ALL ^ E_NOTICE);
 
-$config = parse_ini_file('../../config.ini',true);
-$db_host = $config['database']['host'].":".$config['database']['port'];
-$db_user = $config['database']['user'];
-$db_pwd  = $config['database']['pass'];
-$database = $config['database']['name'];
-$dbLink = mysql_connect($db_host, $db_user, $db_pwd);
-if (!$dbLink)
-    die("Can't connect to database");
-
-if (!mysql_select_db($database))
-    die("Can't select database");
-
-if(!isset($senatorList))
-{
-  $senatorList = ''; 
-} 
-if(!isset($dateList))
-{
-  $senatorList = ''; 
-}
 function getCountByDateQuery($senatorList)
 {
-    $datesQuery = mysql_query("SELECT date(timestamp) as dt, event, count(queue_id) as total, instance FROM event WHERE timestamp > '2011-00-00 00:00:00' and instance <> '' and instance Like '". $senatorList."%' GROUP BY dt, event Order By dt Desc;");
+    $datesQuery = mysql_query("SELECT date(timestamp) as dt, event, count(queue_id) as total, instance FROM event WHERE timestamp > '2011-00-00 00:00:00' and instance <> '' and instance like '". $senatorList."%' GROUP BY dt, event Order By dt Desc;");
     getDataDateTable($datesQuery);
 }
-function getCountBySenatorQuery($dateList)
+
+
+function getCountBySenatorQuery($instanceList)
 {
-    $date4_default = (isset($_POST['date4']) ? $_POST['date4'] : date('Y-m-d')); 
+    $date4_default = (isset($_POST['date4']) ? $_POST['date4'] : date('Y-m-d'));
     $date3_default = (isset($_POST['date3']) ? $_POST['date3'] : date('Y-m-d', strtotime('-4 week'))); 
+
+    // Generate SQL for the list of instances to be viewed.
+    $instance_in = '';
+    foreach ($instanceList as $instance) {
+        if (!empty($instance_in)) {
+            $instance_in .= ',';
+        }
+        $instance_in .= "'$instance'";
+    }
+
     $senatorsQuery = mysql_query("
     select instance, category, event.mailing_id, event, count(id)  as total
         from event
@@ -40,43 +31,13 @@ function getCountBySenatorQuery($dateList)
             and e.timestamp < '".$date4_default." 23:59:59'
             and e.event = 'processed' ) AS mailing
         ON event.mailing_id = mailing.mid
-        where instance <> '' and instance <> 'sd99' and instance <> 'Training1' and install_class='prod'
-        and (
-        instance = 'lanza' or
-        instance = 'golden' or
-        instance = 'martins' or
-        instance = 'hannon' or
-        instance = 'marcellino' or
-        instance = 'ojohnson' or
-        instance = 'zeldin' or
-        instance = 'flanagan' or
-        instance = 'lavelle' or
-        instance = 'fuschillo' or
-        instance = 'skelos' or
-        instance = 'bonacic' or
-        instance = 'larkin' or
-        instance = 'farley' or
-        instance = 'mcdonald' or
-        instance = 'lettle' or
-        instance = 'saland' or
-        instance = 'ball' or
-        instance = 'griffo' or
-        instance = 'defrancisco' or
-        instance = 'seward' or
-        instance = 'libous' or
-        instance = 'omara' or
-        instance = 'nozzolio' or
-        instance = 'ritchie' or
-        instance = 'robach' or
-        instance = 'alesi' or
-        instance = 'young' or
-        instance = 'galavan' or
-        instance = 'grisanti' or
-        instance = 'ransenhofer' or
-        instance = 'maziarz') 
+        where install_class='prod'
+        and instance in ( $instance_in )
     group by instance, mailing_id, event");
     getDataSenatorTable($senatorsQuery);
 }
+
+
 function senatorDropdown()
 {
     $dropdownHtml = '<select><option selected>all</option>';
@@ -88,6 +49,8 @@ function senatorDropdown()
     $dropdownHtml .= '</select>';
     print($dropdownHtml);
 }
+
+
 function totalSenator($data,$value)
 {
     for($i=1;$i < count($data); $i++) {
@@ -160,6 +123,8 @@ function totalSenator($data,$value)
         }
     }
 }
+
+
 function getDataDateTable($datesQuery)
 {
     $i=0;
@@ -190,6 +155,8 @@ function getDataDateTable($datesQuery)
     }
 
 }
+
+
 function getDataSenatorTable($datesQuery)
 {
     $i=0;
@@ -204,16 +171,39 @@ function getDataSenatorTable($datesQuery)
     $j = 0;
     foreach ($results as $senator) {
         print('<div class="result">');
-            print('<div class="senatorName">'. $senator . '</div>');
-            totalSenator($data,$senator);
-         print('</div>');
+        print('<div class="senatorName">'. $senator . '</div>');
+        totalSenator($data, $senator);
+        print('</div>');
     }
 
 }
+
+
+
+error_reporting(E_ALL ^ E_NOTICE);
+
+$config = parse_ini_file('../../config.ini', true);
+$db_host = $config['database']['host'].":".$config['database']['port'];
+$db_user = $config['database']['user'];
+$db_pwd  = $config['database']['pass'];
+$database = $config['database']['name'];
+$instances = $config['viewer']['instances'];
+
+$dbLink = mysql_connect($db_host, $db_user, $db_pwd);
+if (!$dbLink) {
+    die("Can't connect to database");
+}
+
+if (!mysql_select_db($database)) {
+    die("Can't select database");
+}
+
+$instanceList = array_map('trim', explode(',', $instances));
+
 ?>
 <html>
 <head>
-<Style>
+<style>
 html, body, div, span, applet, object, iframe,
 h1, h2, h3, h4, h5, h6, p, blockquote, pre,
 a, abbr, acronym, address, big, cite, code,
@@ -304,8 +294,8 @@ require_once('../../lib/tc_calendar.php');
 ?>
 <input type="submit" style="float:left; margin-left:25px; margin-top:7px;" />
 </form>
-
 </div>
+
 <div class="dateRange">
     <span>
     <?php print('Current Query Begins: '. $date3_default);?>
@@ -315,9 +305,8 @@ require_once('../../lib/tc_calendar.php');
     </span>
 </div>
 <?php
-    getCountBySenatorQuery('');
+    getCountBySenatorQuery($instanceList);
+    mysql_close($dbLink);
 ?>
-<?php
-mysql_close($dbLink);
-?>
+</body>
 </html>
