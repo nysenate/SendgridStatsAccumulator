@@ -1,41 +1,45 @@
 <?php
 error_reporting(E_ALL ^ E_NOTICE);
-
-$config = parse_ini_file('../../config.ini',true);
+$config = parse_ini_file('../../config.ini', true);
 $db_host = $config['database']['host'].":".$config['database']['port'];
 $db_user = $config['database']['user'];
 $db_pwd  = $config['database']['pass'];
 $database = $config['database']['name'];
+$instances = $config['viewer']['instances'];
+
 $dbLink = mysql_connect($db_host, $db_user, $db_pwd);
-if (!$dbLink)
+if (!$dbLink) {
     die("Can't connect to database");
+}
 
-if (!mysql_select_db($database))
+if (!mysql_select_db($database)) {
     die("Can't select database");
+}
 
-if(!isset($senatorList))
+$instanceList = array_map('trim', explode(',', $instances));
+
+function getCountBySenatorQuery($instanceList)
 {
-  $senatorList = ''; 
-} 
-if(!isset($dateList))
-{
-  $senatorList = ''; 
-}
-function getCountByDateQuery($senatorList)
-{
-    $datesQuery = mysql_query("SELECT date(timestamp) as dt, event, count(queue_id) as total, instance FROM event WHERE timestamp > '2011-00-00 00:00:00' and instance <> '' and instance Like '". $senatorList."%' GROUP BY dt, event Order By dt Desc;");
-    getDataDateTable($datesQuery);
-}
-function getCountBySenatorQuery($dateList)
-{
-    $date4_default = (isset($_POST['date4']) ? $_POST['date4'] : date('Y-m-d')); 
+    $date4_default = (isset($_POST['date4']) ? $_POST['date4'] : date('Y-m-d'));
     $date3_default = (isset($_POST['date3']) ? $_POST['date3'] : date('Y-m-d', strtotime('-4 week'))); 
+
+    // Generate SQL for the list of instances to be viewed.
+    $instance_in = '';
+    foreach ($instanceList as $instance) {
+        if (!empty($instance_in)) {
+            $instance_in .= ',';
+        }
+        $instance_in .= "'$instance'";
+    }
+
     $senatorsQuery = mysql_query("
-    select instance, category, event.mailing_id, event, count(id)  as total
-        from event
-        join ( select DISTINCT e.mailing_id AS mid
-        from event as e
+    select instance, category, event.mailing_id, event, count(id) as total
+    from event
+    join (
+            select DISTINCT e.instance, mailing_id, MIN(e.timestamp) AS start
+            from event as e
             where e.install_class='prod'
+<<<<<<< HEAD
             and e.timestamp > '".$date3_default." 00:00:00'
             and e.timestamp < '".$date4_default." 23:59:59'
             and e.event = 'processed') AS mailing
@@ -74,29 +78,62 @@ function getCountBySenatorQuery($dateList)
         instance = 'grisanti' or
         instance = 'ransenhofer' or
         instance = 'maziarz') 
+=======
+              and e.event = 'processed' 
+            GROUP by instance, mailing_id
+            HAVING start >= '2012-01-17 00:00:00'
+               and start <= '2012-01-30 23:59:59'
+          ) AS mailing
+        USING (instance,mailing_id)
+    where install_class='prod' and instance in(".$instance_in.")
+>>>>>>> 54a2e9d0c06117bfbb3047415b1177527cfd7efb
     group by instance, mailing_id, event");
     getDataSenatorTable($senatorsQuery);
 }
-function senatorDropdown()
+function printItems($dataOutput, $arrayType)
 {
-    $dropdownHtml = '<select><option selected>all</option>';
-    $senatorQuery = mysql_query("SELECT instance FROM `event` WHERE 1 group by instance");
-    while($row = mysql_fetch_array($senatorQuery))
+    $typeArray = array("bounce","click","deferred","delivered","dropped","open","processed","spamreport","unsubscribe");
+    foreach($typeArray as $value)
     {
-        $dropdownHtml .= '<option value='.$row[0].'>' . $row[0] . '</option>';
+        print('<div class="item">'); 
+            print('<div>');
+            print($value);
+            print('</div>');
+            print('<div>'); 
+            print($dataOutput[$value][$arrayType]);
+            print('</div>');
+        print('</div>'); 
     }
-    $dropdownHtml .= '</select>';
-    print($dropdownHtml);
 }
 function totalSenator($data,$value)
 {
+    unset($dataOutput);
+    $dataOutput = array();
+    $dataOutput['bounce']['name'] = 'bounce';
+    $dataOutput['click']['name'] = 'click';
+    $dataOutput['deferred']['name'] = 'deferred';
+    $dataOutput['delivered']['name'] = 'delivered';
+    $dataOutput['dropped']['name'] = 'dropped';
+    $dataOutput['open']['name'] = 'open';
+    $dataOutput['processed']['name'] = 'processed';
+    $dataOutput['spamreport']['name'] = 'spamreport';
+    $dataOutput['unsubscribe']['name'] = 'unsubscribe';
     for($i=1;$i < count($data); $i++) {
         if($data[$i]['instance'] == $value){
+            /* This happens at the beginning of each individual instance */
             if(($data[$i-1]['instance'] != $data[$i]['instance']) && isset($data[$i]['instance']) )
             {
-                unset($summationOfSenator);
-                $summationOfSenator = array();
+                $dataOutput['bounce']['total'] = 0;
+                $dataOutput['click']['total'] = 0;
+                $dataOutput['deferred']['total'] = 0;
+                $dataOutput['delivered']['total'] = 0;
+                $dataOutput['dropped']['total'] = 0;
+                $dataOutput['open']['total'] = 0;
+                $dataOutput['processed']['total'] = 0;
+                $dataOutput['spamreport']['total'] = 0;
+                $dataOutput['unsubscribe']['total'] = 0;
             }
+            /* This happens at the beginning of each individual mailing */
             if(
                 ($data[$i-1]['mailing_id'] != $data[$i]['mailing_id']) || 
                 (
@@ -104,91 +141,44 @@ function totalSenator($data,$value)
                 )  && isset($data[$i]['mailing_id']))
             {
                 print('<div class="date"><div class="mailingID"><div>Mailing ID: ' . $data[$i]['mailing_id'] .' </div><div class="text">'. $data[$i]['category'] .'</div></div>');
+                $dataOutput['bounce']['value'] = 0;
+                $dataOutput['click']['value'] = 0;
+                $dataOutput['deferred']['value'] = 0;
+                $dataOutput['delivered']['value'] = 0;
+                $dataOutput['dropped']['value'] = 0;
+                $dataOutput['open']['value'] = 0;
+                $dataOutput['processed']['value'] = 0;
+                $dataOutput['spamreport']['value'] = 0;
+                $dataOutput['unsubscribe']['value'] = 0;
             }
-            print('<div class="item">'); 
-                print('<div>');
-                print($data[$i]['event']);
-                print('</div>');
-                print('<div>'); 
-                print($data[$i]['total']);
-                print('</div>');
-            print('</div>');
+            /*this happens inside the mailings*/
+            switch($data[$i]['event'])
+            {
+                case "bounce":  $dataOutput['bounce']['value'] += $data[$i]['total'];$dataOutput['bounce']['total'] += $data[$i]['total']; break;
+                case "click": $dataOutput['click']['value'] += $data[$i]['total'];$dataOutput['click']['total'] += $data[$i]['total']; break;
+                case "deferred": $dataOutput['deferred']['value'] += $data[$i]['total'];$dataOutput['deferred']['total'] += $data[$i]['total']; break;
+                case "delivered": $dataOutput['delivered']['value'] += $data[$i]['total'];$dataOutput['delivered']['total'] += $data[$i]['total']; break;
+                case "dropped": $dataOutput['dropped']['value'] += $data[$i]['total'];$dataOutput['dropped']['total'] += $data[$i]['total']; break;
+                case "open": $dataOutput['open']['value'] += $data[$i]['total'];$dataOutput['open']['total'] += $data[$i]['total']; break;
+                case "processed": $dataOutput['processed']['value'] += $data[$i]['total'];$dataOutput['processed']['total'] += $data[$i]['total']; break;
+                case "spamreport": $dataOutput['spamreport']['value'] += $data[$i]['total'];$dataOutput['spamreport']['total'] += $data[$i]['total']; break;
+                case "unsubscribe": $dataOutput['unsubscribe']['value'] += $data[$i]['total'];$dataOutput['unsubscribe']['total'] += $data[$i]['total']; break;
+            }
+            /*this closes each mailing*/
             if(($data[$i+1]['mailing_id'] != $data[$i]['mailing_id']) && isset($data[$i]['mailing_id']) )
             {
+                printItems($dataOutput, 'value');
                 print('</div>');
             }
+            /*this closes each instance*/
             if(($data[$i]['instance'] != $data[$i+1]['instance']) && isset($data[$i]['instance']) )
             {
-                for($i=1;$i < count($data); $i++) {
-                     if($data[$i]['instance'] == $value){
-                        switch($data[$i]['event'])
-                        {
-                            case "bounce": $summationOfSenator['bounce'] += $data[$i]['total']; break;
-                            case "click": $summationOfSenator['click'] += $data[$i]['total']; break;
-                            case "deferred": $summationOfSenator['deferred'] += $data[$i]['total']; break;
-                            case "delivered": $summationOfSenator['delivered'] += $data[$i]['total']; break;
-                            case "dropped": $summationOfSenator['dropped'] += $data[$i]['total']; break;
-                            case "open": $summationOfSenator['open'] += $data[$i]['total']; break;
-                            case "processed": $summationOfSenator['processed'] += $data[$i]['total']; break;
-                            case "spamreport": $summationOfSenator['spamreport'] += $data[$i]['total']; break;
-                            case "unsubscribe": $summationOfSenator['unsubscribe'] += $data[$i]['total']; break;
-                        }
-                    }
-                }
-                print('<div class="date"> <span class="mailingID">Mailing ID: TOTAL </span>');
-                ksort($summationOfSenator);
-                foreach($summationOfSenator as $event=>$total)
-                {
-                    print('<div class="item">'); 
-                        print('<div>');
-                        print($event);
-                        print('</div>');
-                        print('<div>'); 
-                        print($total);
-                        print('</div>');
-                    print('</div>');
-                }
-                print('</div>');
-              /* for($i=0; $i < count($summationOfSenator); $i++)
-                {
-                    $eventName = $summationOfSenator[$i];
-                    print($eventName);
-                    print($summationofSenator[$i]['total']);
-                }  */
+                print('<div class="date"><div class="mailingID"><div>Mailing ID: Total </div></div>');
+                printItems($dataOutput, 'total');
             }
             
         }
     }
-}
-function getDataDateTable($datesQuery)
-{
-    $i=0;
-    $data[] = array();
-    while($row = mysql_fetch_array($datesQuery)) {
-        $uniqueDates[$i] = $row[0];
-        $i++;
-        $data[] = $row;
-    }
-    //print_r($data);
-    $results = array_unique($uniqueDates);
-    foreach ($results as $value) {
-        print('<div class="date">');
-            print($value . '<br>');
-            for($i=1;$i < count($data); $i++) {
-                if($data[$i]['dt'] == $value){
-                    print('<div class="item">'); 
-                    print('<div>');
-                    print($data[$i]['event']);
-                    print('</div>');
-                    print('<div>'); 
-                    print($data[$i]['total']);
-                    print('</div>');
-                    print('</div>');
-                }
-            }
-         print('</div>');
-    }
-
 }
 function getDataSenatorTable($datesQuery)
 {
@@ -204,16 +194,39 @@ function getDataSenatorTable($datesQuery)
     $j = 0;
     foreach ($results as $senator) {
         print('<div class="result">');
-            print('<div class="senatorName">'. $senator . '</div>');
-            totalSenator($data,$senator);
-         print('</div>');
+        print('<div class="senatorName">'. $senator . '</div>');
+        totalSenator($data, $senator);
+        print('</div>');
     }
 
 }
+
+
+
+error_reporting(E_ALL ^ E_NOTICE);
+
+$config = parse_ini_file('../../config.ini', true);
+$db_host = $config['database']['host'].":".$config['database']['port'];
+$db_user = $config['database']['user'];
+$db_pwd  = $config['database']['pass'];
+$database = $config['database']['name'];
+$instances = $config['viewer']['instances'];
+
+$dbLink = mysql_connect($db_host, $db_user, $db_pwd);
+if (!$dbLink) {
+    die("Can't connect to database");
+}
+
+if (!mysql_select_db($database)) {
+    die("Can't select database");
+}
+
+$instanceList = array_map('trim', explode(',', $instances));
+
 ?>
 <html>
 <head>
-<Style>
+<style>
 html, body, div, span, applet, object, iframe,
 h1, h2, h3, h4, h5, h6, p, blockquote, pre,
 a, abbr, acronym, address, big, cite, code,
@@ -304,8 +317,8 @@ require_once('../../lib/tc_calendar.php');
 ?>
 <input type="submit" style="float:left; margin-left:25px; margin-top:7px;" />
 </form>
-
 </div>
+
 <div class="dateRange">
     <span>
     <?php print('Current Query Begins: '. $date3_default);?>
@@ -315,9 +328,8 @@ require_once('../../lib/tc_calendar.php');
     </span>
 </div>
 <?php
-    getCountBySenatorQuery('');
+    getCountBySenatorQuery($instanceList);
+    mysql_close($dbLink);
 ?>
-<?php
-mysql_close($dbLink);
-?>
+</body>
 </html>
