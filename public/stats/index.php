@@ -39,54 +39,13 @@ function getCountBySenatorQuery($instanceList)
             select DISTINCT e.instance, mailing_id, MIN(e.timestamp) AS start
             from event as e
             where e.install_class='prod'
-<<<<<<< HEAD
-            and e.timestamp > '".$date3_default." 00:00:00'
-            and e.timestamp < '".$date4_default." 23:59:59'
-            and e.event = 'processed') AS mailing
-        ON event.mailing_id = mailing.mid
-        where instance <> '' and instance <> 'sd99' and instance <> 'Training1' and install_class='prod'
-        and (
-        instance = 'lanza' or
-        instance = 'golden' or
-        instance = 'martins' or
-        instance = 'hannon' or
-        instance = 'marcellino' or
-        instance = 'ojohnson' or
-        instance = 'zeldin' or
-        instance = 'flanagan' or
-        instance = 'lavelle' or
-        instance = 'fuschillo' or
-        instance = 'skelos' or
-        instance = 'bonacic' or
-        instance = 'larkin' or
-        instance = 'farley' or
-        instance = 'mcdonald' or
-        instance = 'lettle' or
-        instance = 'saland' or
-        instance = 'ball' or
-        instance = 'griffo' or
-        instance = 'defrancisco' or
-        instance = 'seward' or
-        instance = 'libous' or
-        instance = 'omara' or
-        instance = 'nozzolio' or
-        instance = 'ritchie' or
-        instance = 'robach' or
-        instance = 'alesi' or
-        instance = 'young' or
-        instance = 'galavan' or
-        instance = 'grisanti' or
-        instance = 'ransenhofer' or
-        instance = 'maziarz') 
-=======
-              and e.event = 'processed' 
+            and e.event = 'processed' 
             GROUP by instance, mailing_id
-            HAVING start >= '2012-01-17 00:00:00'
-               and start <= '2012-01-30 23:59:59'
+            HAVING start >= '".$date3_default." 00:00:00'
+               and start <= '".$date4_default." 23:59:59'
           ) AS mailing
         USING (instance,mailing_id)
     where install_class='prod' and instance in(".$instance_in.")
->>>>>>> 54a2e9d0c06117bfbb3047415b1177527cfd7efb
     group by instance, mailing_id, event");
     getDataSenatorTable($senatorsQuery);
 }
