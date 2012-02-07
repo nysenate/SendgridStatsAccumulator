@@ -124,7 +124,10 @@ function totalSenator($data,$value)
                 case "unsubscribe": $dataOutput['unsubscribe']['value'] += $data[$i]['total'];$dataOutput['unsubscribe']['total'] += $data[$i]['total']; break;
             }
             /*this closes each mailing*/
-            if(($data[$i+1]['mailing_id'] != $data[$i]['mailing_id']) && isset($data[$i]['mailing_id']) )
+            if(($data[$i+1]['mailing_id'] != $data[$i]['mailing_id']) || 
+                (
+                    ($data[$i+1]['instance'] != $data[$i]['instance']) && ($data[$i+1]['mailing_id'] == $data[$i]['mailing_id'])
+                )  && isset($data[$i]['mailing_id'])) 
             {
                 printItems($dataOutput, 'value');
                 print('</div>');
