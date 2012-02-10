@@ -5,7 +5,7 @@ CREATE TABLE log (
     message text,
     INDEX(debug_level),
     INDEX(dt_logged)
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 CREATE TABLE event (
     id int(10) unsigned PRIMARY KEY AUTO_INCREMENT,
@@ -17,7 +17,7 @@ CREATE TABLE event (
     INDEX(email),
     INDEX(category),
     INDEX(`timestamp`)
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 
 CREATE TABLE bounce (
@@ -30,14 +30,14 @@ CREATE TABLE bounce (
     smtp_id varchar(255),
 
     FOREIGN KEY (event_id) REFERENCES event(id) ON DELETE CASCADE
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 CREATE TABLE click (
     event_id int(10) unsigned PRIMARY KEY,
     url varchar(255),
 
     FOREIGN KEY (event_id) REFERENCES event(id) ON DELETE CASCADE
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 CREATE TABLE deferred (
     event_id int(10) unsigned PRIMARY KEY,
@@ -45,7 +45,7 @@ CREATE TABLE deferred (
     attempt_num  int(10) unsigned,
 
     FOREIGN KEY (event_id) REFERENCES event(id) ON DELETE CASCADE
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 CREATE TABLE delivered (
     event_id int(10) unsigned PRIMARY KEY,
@@ -53,7 +53,7 @@ CREATE TABLE delivered (
     smtp_id varchar(255),
 
     FOREIGN KEY (event_id) REFERENCES event(id) ON DELETE CASCADE
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 CREATE TABLE dropped (
     event_id int(10) unsigned PRIMARY KEY,
@@ -62,7 +62,7 @@ CREATE TABLE dropped (
     INDEX(reason),
 
     FOREIGN KEY (event_id) REFERENCES event(id) ON DELETE CASCADE
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 
 -- Some shell events that don't contain unique information
@@ -71,23 +71,23 @@ CREATE TABLE dropped (
 CREATE TABLE open (
     event_id int(10) unsigned PRIMARY KEY,
     FOREIGN KEY (event_id) REFERENCES event(id) ON DELETE CASCADE
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 CREATE TABLE processed (
     event_id int(10) unsigned PRIMARY KEY,
     smtp_id varchar(255),
     FOREIGN KEY (event_id) REFERENCES event(id) ON DELETE CASCADE
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 CREATE TABLE spamreport (
     event_id int(10) unsigned PRIMARY KEY,
     FOREIGN KEY (event_id) REFERENCES event(id) ON DELETE CASCADE
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 CREATE TABLE unsubscribe (
     event_id int(10) unsigned PRIMARY KEY,
     FOREIGN KEY (event_id) REFERENCES event(id) ON DELETE CASCADE
-) ENGINE=InnoDB;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 
 CREATE TABLE `summary` (
@@ -100,7 +100,7 @@ CREATE TABLE `summary` (
     `dt_first` datetime NOT NULL,
     `dt_last` datetime NOT NULL,
     UNIQUE KEY (`mailing_id`,`instance`,`install_class`,`event`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 
 DELIMITER |

@@ -10,7 +10,7 @@ CREATE TABLE `summary` (
     `dt_first` datetime NOT NULL,
     `dt_last` datetime NOT NULL,
     UNIQUE KEY (`mailing_id`,`instance`,`install_class`,`event`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 
 -- Make sure we get a write lock so that we don't double
