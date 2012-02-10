@@ -16,8 +16,13 @@ if (!mysql_select_db($database)) {
     die("Can't select database");
 }
 
+//gets a list of instances from config file
+//on election, update the config file
+//or set a secondary config.ini to be written by
+//procuring data from external api on cron
 $instanceList = array_map('trim', explode(',', $instances));
 
+//the query to garner data and some other stuff (like setting date ranges via post & instances to receive)
 function getCountBySenatorQuery($instanceList)
 {
     $date4_default = (isset($_POST['date4']) ? $_POST['date4'] : date('Y-m-d'));
@@ -33,24 +38,27 @@ function getCountBySenatorQuery($instanceList)
     }
 
     $senatorsQuery = mysql_query("
-    select instance, category, event.mailing_id, event, count(id) as total
-    from event
+    select instance, category, summary.mailing_id, event, count, dt_first, dt_last
+    from summary 
     join (
-            select DISTINCT e.instance, mailing_id, MIN(e.timestamp) AS start
-            from event as e
-            where e.install_class='prod'
-            and e.event = 'processed' 
+            select DISTINCT summ.instance, mailing_id, MIN(summ.dt_first) AS start
+            from summary as summ
+            where summ.install_class='prod'
+            and summ.event = 'processed' 
             GROUP by instance, mailing_id
             HAVING start >= '".$date3_default." 00:00:00'
                and start <= '".$date4_default." 23:59:59'
           ) AS mailing
         USING (instance,mailing_id)
     where install_class='prod' and instance in(".$instance_in.")
-    group by instance, mailing_id, event");
+    group by instance, mailing_id, event;
+    ");
     getDataSenatorTable($senatorsQuery);
 }
+//Prints the individual items of 'bounce, click'... etc in a smaller package.
 function printItems($dataOutput, $arrayType)
 {
+    //this is the order of array amounts, individual changes &/or additions could be added as if statements in the foreach
     $typeArray = array("bounce","click","deferred","delivered","dropped","open","processed","spamreport","unsubscribe");
     foreach($typeArray as $value)
     {
@@ -64,6 +72,7 @@ function printItems($dataOutput, $arrayType)
         print('</div>'); 
     }
 }
+//collates and arranges the data and provides the sum of amounts as it traverses the array
 function totalSenator($data,$value)
 {
     unset($dataOutput);
@@ -92,7 +101,7 @@ function totalSenator($data,$value)
                 $dataOutput['spamreport']['total'] = 0;
                 $dataOutput['unsubscribe']['total'] = 0;
             }
-            /* This happens at the beginning of each individual mailing */
+            /* This happens at the beginning of each individual mailing the if (like the closing if below) checks if the previous mailing id is equal to the current one OR is the instance different, but the mailing id the same */
             if(
                 ($data[$i-1]['mailing_id'] != $data[$i]['mailing_id']) || 
                 (
@@ -110,19 +119,20 @@ function totalSenator($data,$value)
                 $dataOutput['spamreport']['value'] = 0;
                 $dataOutput['unsubscribe']['value'] = 0;
             }
-            /*this happens inside the mailings*/
+            /*this happens inside the mailings so that we can eventually order by whatever we choose above*/
             switch($data[$i]['event'])
             {
-                case "bounce":  $dataOutput['bounce']['value'] += $data[$i]['total'];$dataOutput['bounce']['total'] += $data[$i]['total']; break;
-                case "click": $dataOutput['click']['value'] += $data[$i]['total'];$dataOutput['click']['total'] += $data[$i]['total']; break;
-                case "deferred": $dataOutput['deferred']['value'] += $data[$i]['total'];$dataOutput['deferred']['total'] += $data[$i]['total']; break;
-                case "delivered": $dataOutput['delivered']['value'] += $data[$i]['total'];$dataOutput['delivered']['total'] += $data[$i]['total']; break;
-                case "dropped": $dataOutput['dropped']['value'] += $data[$i]['total'];$dataOutput['dropped']['total'] += $data[$i]['total']; break;
-                case "open": $dataOutput['open']['value'] += $data[$i]['total'];$dataOutput['open']['total'] += $data[$i]['total']; break;
-                case "processed": $dataOutput['processed']['value'] += $data[$i]['total'];$dataOutput['processed']['total'] += $data[$i]['total']; break;
-                case "spamreport": $dataOutput['spamreport']['value'] += $data[$i]['total'];$dataOutput['spamreport']['total'] += $data[$i]['total']; break;
-                case "unsubscribe": $dataOutput['unsubscribe']['value'] += $data[$i]['total'];$dataOutput['unsubscribe']['total'] += $data[$i]['total']; break;
+                case "bounce":  $dataOutput['bounce']['value'] += $data[$i]['count'];$dataOutput['bounce']['total'] += $data[$i]['count']; break;
+                case "click": $dataOutput['click']['value'] += $data[$i]['count'];$dataOutput['click']['total'] += $data[$i]['count']; break;
+                case "deferred": $dataOutput['deferred']['value'] += $data[$i]['count'];$dataOutput['deferred']['total'] += $data[$i]['count']; break;
+                case "delivered": $dataOutput['delivered']['value'] += $data[$i]['count'];$dataOutput['delivered']['total'] += $data[$i]['count']; break;
+                case "dropped": $dataOutput['dropped']['value'] += $data[$i]['count'];$dataOutput['dropped']['total'] += $data[$i]['count']; break;
+                case "open": $dataOutput['open']['value'] += $data[$i]['count'];$dataOutput['open']['total'] += $data[$i]['count']; break;
+                case "processed": $dataOutput['processed']['value'] += $data[$i]['count'];$dataOutput['processed']['total'] += $data[$i]['count']; break;
+                case "spamreport": $dataOutput['spamreport']['value'] += $data[$i]['count'];$dataOutput['spamreport']['total'] += $data[$i]['count']; break;
+                case "unsubscribe": $dataOutput['unsubscribe']['value'] += $data[$i]['count'];$dataOutput['unsubscribe']['total'] += $data[$i]['count']; break;
             }
+            
             /*this closes each mailing*/
             if(($data[$i+1]['mailing_id'] != $data[$i]['mailing_id']) || 
                 (
