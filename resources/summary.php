@@ -59,14 +59,14 @@ function getCountBySenatorQuery($instanceList)
 function printItems($dataOutput, $arrayType)
 {
     //this is the order of array amounts, individual changes &/or additions could be added as if statements in the foreach
-    $typeArray = array("bounce","click","deferred","delivered","dropped","open","processed","spamreport","unsubscribe");
+    $typeArray = array("processed","delivered","dropped","deferred","bounce","open","click","spamreport","unsubscribe");
     foreach($typeArray as $value)
     {
         print('<div class="item">'); 
             print('<div>');
-            print($value);
+            print($dataOutput[$value]['name']);
             print('</div>');
-            print('<div>'); 
+            print('<div class="'.$value.' '. $arrayType .'">'); 
             print($dataOutput[$value][$arrayType]);
             print('</div>');
         print('</div>'); 
@@ -77,15 +77,15 @@ function totalSenator($data,$value)
 {
     unset($dataOutput);
     $dataOutput = array();
-    $dataOutput['bounce']['name'] = 'bounce';
-    $dataOutput['click']['name'] = 'click';
-    $dataOutput['deferred']['name'] = 'deferred';
-    $dataOutput['delivered']['name'] = 'delivered';
-    $dataOutput['dropped']['name'] = 'dropped';
-    $dataOutput['open']['name'] = 'open';
-    $dataOutput['processed']['name'] = 'processed';
-    $dataOutput['spamreport']['name'] = 'spamreport';
-    $dataOutput['unsubscribe']['name'] = 'unsubscribe';
+    $dataOutput['bounce']['name'] = 'Bounced';
+    $dataOutput['click']['name'] = 'Clicked';
+    $dataOutput['deferred']['name'] = 'Deferred';
+    $dataOutput['delivered']['name'] = 'Delivered';
+    $dataOutput['dropped']['name'] = 'Dropped';
+    $dataOutput['open']['name'] = 'Opened';
+    $dataOutput['processed']['name'] = 'Processed';
+    $dataOutput['spamreport']['name'] = 'Spamreport';
+    $dataOutput['unsubscribe']['name'] = 'Unsubscribed';
     for($i=1;$i < count($data); $i++) {
         if($data[$i]['instance'] == $value){
             /* This happens at the beginning of each individual instance */
@@ -147,6 +147,7 @@ function totalSenator($data,$value)
             {
                 print('<div class="date"><div class="mailingID"><div>Mailing ID: Total </div></div>');
                 printItems($dataOutput, 'total');
+                print('</div>');
             }
             
         }

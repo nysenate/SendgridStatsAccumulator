@@ -1,7 +1,7 @@
 <?php
 error_reporting(E_ALL ^ E_NOTICE);
 if(!@file_exists('../../resources/summary.php') ) {
-    echo 'can not include';
+    echo 'Error';
 } else {
    include('../../resources/summary.php');
 }
@@ -53,6 +53,30 @@ ol, ul {
 </style>
 <link href="calendar.css" rel="stylesheet" type="text/css">
 <script language="javascript" src="calendar.js"></script>
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+<script>
+function getAllSenatorTotal()
+{
+  document.write('<div class="result"><div class="senatorName">Total</div><div class="date"><div class="mailingID"><div>Totals</div><div class="text">Amongst All Senators</div></div>');
+    var arrayTypes = new Array("processed","delivered","dropped","deferred","bounce","open","click","spamreport","unsubscribe");
+    for(var i=0;i < arrayTypes.length; i++)
+    {
+      var itemProcessed = new Array();
+      var selectorName = '.item .'+arrayTypes[i]+'.total';
+      $(selectorName).each(function(i){
+        itemProcessed[i] = $(this).html();
+      })
+      var itemProcessedTotal = 0;
+      for(var j=0;j < itemProcessed.length; j++)
+      {
+        itemProcessedTotal += parseInt(itemProcessed[j]);     
+      }
+      document.write('<div class="item"><div>'+arrayTypes[i]+'</div>');
+      document.write('<div class="'+arrayTypes[i]+' value">'+itemProcessedTotal+'</div></div>');
+    }
+  document.write('</div></div></div>');
+}
+</script>
 <title>
 Sendgrid Stats
 </title>
@@ -113,5 +137,8 @@ require_once('../../lib/tc_calendar.php');
     getCountBySenatorQuery($instanceList);
     mysql_close($dbLink);
 ?>
+<script>
+getAllSenatorTotal();
+</script>
 </body>
 </html>
