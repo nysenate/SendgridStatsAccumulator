@@ -36,9 +36,7 @@ function getCountBySenatorQuery($instanceList)
         }
         $instance_in .= "'$instance'";
     }
-
-    $senatorsQuery = mysql_query("
-    select instance, category, summary.mailing_id, event, count, dt_first, dt_last
+    $senQuer = "select instance, category, summary.mailing_id, event, count, dt_first, dt_last
     from summary 
     join (
             select DISTINCT summ.instance, mailing_id, MIN(summ.dt_first) AS start
@@ -51,8 +49,9 @@ function getCountBySenatorQuery($instanceList)
           ) AS mailing
         USING (instance,mailing_id)
     where install_class='prod' and instance in(".$instance_in.")
-    group by instance, mailing_id, event;
-    ");
+    group by instance, mailing_id, event
+    order by instance ASC, mailing_id DESC;";
+    $senatorsQuery = mysql_query("$senQuer");
     getDataSenatorTable($senatorsQuery);
 }
 //Prints the individual items of 'bounce, click'... etc in a smaller package.
@@ -108,7 +107,13 @@ function totalSenator($data,$value)
                     ($data[$i-1]['instance'] != $data[$i]['instance']) && ($data[$i-1]['mailing_id'] == $data[$i]['mailing_id'])
                 )  && isset($data[$i]['mailing_id']))
             {
-                print('<div class="date"><div class="mailingID"><div>Mailing ID: ' . $data[$i]['mailing_id'] .' </div><div class="text">'. $data[$i]['category'] .'</div></div>');
+                $dt_first_time = strtotime($data[$i]['dt_first']);
+                $dt_first_date = date('m-d-y', $dt_first_time);
+                print('<div class="date"><div class="mailingID">
+                        <div>Mailing ID: ' . $data[$i]['mailing_id'] .' </div>
+                        <div class="text" style="margin:3px 0;"><span style="font-weight:bold">Submission Date: </span>'. $dt_first_date .'</div>
+                        <div class="text">'. $data[$i]['category'] .'</div>
+                    </div>');
                 $dataOutput['bounce']['value'] = 0;
                 $dataOutput['click']['value'] = 0;
                 $dataOutput['deferred']['value'] = 0;
