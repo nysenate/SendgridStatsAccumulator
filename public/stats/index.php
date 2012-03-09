@@ -1,9 +1,16 @@
 <?php
+session_start();
 error_reporting(E_ALL ^ E_NOTICE);
 if(!@file_exists('../../resources/summary.php') ) {
     echo 'Error';
 } else {
    include('../../resources/summary.php');
+}
+print($_SESSION['loginname']);
+print($_SESSION['loginpass']);
+if(!preg_match('/ldaptest/', $_SERVER['HTTP_REFERER']) )
+{
+  header('Location: ../ldaptest.php');
 }
 ?>
 <html>
