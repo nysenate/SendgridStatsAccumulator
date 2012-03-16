@@ -7,21 +7,21 @@ $db_pwd  = $config['database']['pass'];
 $database = $config['database']['name'];
 $permissionslist = $config['permissions'];
 //var_dump($permissionslist);
-$searchonview = explode(',',$_SESSION['groupnamearray']);
-$instances = '';
-foreach($permissionslist as $key => $val)
-{
+$searchonview = $_SESSION['groupnamearray'];
+$instances = array();
+
+// $key is CRM instance name; $val is comma-separated list of LDAP groups
+foreach ($permissionslist as $key => $val) {
     //var_dump($key);
-    $instancePermission = explode(',',$val[0]);
-    foreach($searchonview as $searchkey => $searchval)
-    {
-        if(in_array($searchval, $instancePermission))
-        {
-            $instances .= $key .',';
+    $allowedGroups = array_map('trim', explode(',', $val));
+    foreach ($searchonview as $searchval) {
+        if (in_array($searchval, $allowedGroups)) {
+            $instances[] = trim($key);
+            break;   // avoid adding an instance more than once
         }
     }
 }
-//var_dump($instances);
+
 $dbLink = mysql_connect($db_host, $db_user, $db_pwd);
 if (!$dbLink) {
     die("Can't connect to database");
@@ -35,7 +35,7 @@ if (!mysql_select_db($database)) {
 //on election, update the config file
 //or set a secondary config.ini to be written by
 //procuring data from external api on cron
-$instanceList = array_map('trim', explode(',', $instances));
+$instanceList = $instances;
 
 //the query to garner data and some other stuff (like setting date ranges via post & instances to receive)
 function getCountBySenatorQuery($instanceList)
