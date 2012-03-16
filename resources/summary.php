@@ -5,8 +5,23 @@ $db_host = $config['database']['host'].":".$config['database']['port'];
 $db_user = $config['database']['user'];
 $db_pwd  = $config['database']['pass'];
 $database = $config['database']['name'];
-$instances = $config['viewer']['instances'];
-
+$permissionslist = $config['permissions'];
+//var_dump($permissionslist);
+$searchonview = explode(',',$_SESSION['groupnamearray']);
+$instances = '';
+foreach($permissionslist as $key => $val)
+{
+    //var_dump($key);
+    $instancePermission = explode(',',$val[0]);
+    foreach($searchonview as $searchkey => $searchval)
+    {
+        if(in_array($searchval, $instancePermission))
+        {
+            $instances .= $key .',';
+        }
+    }
+}
+//var_dump($instances);
 $dbLink = mysql_connect($db_host, $db_user, $db_pwd);
 if (!$dbLink) {
     die("Can't connect to database");

@@ -1,151 +1,93 @@
 <?php
-session_start();
-error_reporting(E_ALL ^ E_NOTICE);
-if(!@file_exists('../../resources/summary.php') ) {
-    echo 'Error';
-} else {
-   include('../../resources/summary.php');
-}
-print($_SESSION['loginname']);
-print($_SESSION['loginpass']);
-if(!preg_match('/ldaptest/', $_SERVER['HTTP_REFERER']) )
+error_reporting(E_ERROR);
+
+//build config info here
+isset($ldaphost) ? $ldaphost : $ldaphost= "webmail.senate.state.ny.us";
+isset($ldapport) ? $ldapport : $ldapport= "389";
+isset($_POST['loginname']) ? $ldapuname = $_POST['loginname'] : $ldapuname = '';
+isset($_POST['loginpass']) ? $ldappass = $_POST['loginpass'] : $ldappass = '';
+isset($_POST['attempted']) ? $ldapattempted = $_POST['attempted'] : $ldapattempted  = '0';
+$ldapbasedn = " ";
+$ldapdn = " ";
+$ldapconn = ldap_connect($ldaphost, $ldapport) or die('Could not connect to ' . $ldaphost);
+$ldapattributes = array("gidnumber");
+$ldapfilter = "(sn=".$ldapuname."*)";
+
+//when the post is submitted, it reads the non-empty variables and tries to connect
+if(!empty($ldapuname) && !empty($ldappass) )
 {
-  header('Location: ../ldaptest.php');
+  //verifies connection
+  if($ldapconn){
+    //verifies bind (which means -u and -p are both correct). If it fails, it throws up a warning, which is why warnings are disabled on this page
+    $ldapbind = ldap_bind($ldapconn, $ldapuname, $ldappass);
+    if($ldapbind){
+      //Does a search on the -u/-p combination for group id number
+      $sr = ldap_search($ldapconn,$ldapdn,$ldapfilter,$ldapattributes);
+      //Gets the entries & reads their length. Each array starts with a namespace and then gives the data, hence the -1 to move the cursor up one
+      $entry = ldap_get_entries($ldapconn, $sr);
+      //var_dump($entry);
+      $gidlength = count($entry[0]['gidnumber'])-1;
+      $groupnamearray = "";
+      for($i = 0; $i < $gidlength; $i++)
+      {
+        $gidnumber = $entry[0]['gidnumber'][$i];
+        //print('GidNumber: ' . $gidnumber . '<br>');
+        //and then you do a second search for the group names, which returns ALL of the group names that you're looking at
+        $searchresult = ldap_search($ldapconn," ", "(&(objectClass=groupOfNames)(gidnumber=".$gidnumber."))", array("displayname") );
+        //var_dump($searchresult);
+        $groupentry = ldap_get_entries($ldapconn, $searchresult);
+        if($i != 0)
+        {
+          $groupnamearray .= ",";
+        } 
+        $groupnamearray .= $groupentry[0]['displayname'][0];
+      }
+      //print($groupnamearray);
+      //$tovardup = explode(',',$groupnamearray);
+      //var_dump($tovardup);
+      //opens a session to pass the variables over, and then we go to index.php for authorization
+      session_start();
+      $_SESSION['groupnamearray'] = $groupnamearray;
+      $_SESSION['loginname'] = $_POST['loginname'];
+      //$_SESSION['loginpass'] = $_POST['loginpass'];
+      header( 'Location: stats.php' ) ;
+    }
+    else {
+      session_start();
+      $_SESSION['kickbackerror'] = "Wrong User/Password";
+    }
+  }
+}
+elseif ($ldapattempted == 1)
+{
+  $_SESSION['kickbackerror'] ="Cannot leave fields blank";
 }
 ?>
 <html>
 <head>
-<style>
-html, body, div, span, applet, object, iframe,
-h1, h2, h3, h4, h5, h6, p, blockquote, pre,
-a, abbr, acronym, address, big, cite, code,
-del, dfn, em, img, ins, kbd, q, s, samp,
-small, strike, strong, sub, sup, tt, var,
-b, u, i, center,
-dl, dt, dd, ol, ul, li,
-fieldset, form, label, legend,
-table, caption, tbody, tfoot, thead, tr, th, td,
-article, aside, canvas, details, embed, 
-figure, figcaption, footer, header, hgroup, 
-menu, nav, output, ruby, section, summary,
-time, mark, audio, video {
-    margin: 0;
-    padding: 0;
-    border: 0;
-    font-size: 100%;
-    font: inherit;
-    vertical-align: baseline;
-}
-/* HTML5 display-role reset for older browsers */
-article, aside, details, figcaption, figure, 
-footer, header, hgroup, menu, nav, section {
-    display: block;
-}
-body {
-    line-height: 1; font-family:arial, verdana, sans-serif; font-size:14px; padding:10px; width:960px; margin: 0 auto;
-}
-ol, ul {
-    list-style: none;
-}
-.header {font-size:24px; padding:10px;}
-.result {text-transform: capitalize; width:900px; clear:both;}
-.senatorName {font-size:18px; padding-bottom:5px; margin-bottom:5px; border-bottom:1px solid black;}
-.item {padding:5px; text-align:center; width:70px; float:left;}
-.item div {margin-bottom:5px;}
-.date .mailingID {font-weight: bold; float:left; width: 150px; margin-right:10px; margin-bottom:5px;}
-.date .mailingID .text {font-weight:normal; font-size:10px;}
-.date {clear:both;}
-.dateRange {text-align:left; padding:10px; clear:both;}
-.dateRange span {}
-</style>
-<link href="calendar.css" rel="stylesheet" type="text/css">
-<script language="javascript" src="calendar.js"></script>
-<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
-<script>
-function getAllSenatorTotal()
-{
-  document.write('<div class="result"><div class="senatorName">Total</div><div class="date"><div class="mailingID"><div>Totals</div><div class="text">Amongst All Senators</div></div>');
-    var arrayTypes = new Array("processed","delivered","dropped","deferred","bounce","open","click","spamreport","unsubscribe");
-    for(var i=0;i < arrayTypes.length; i++)
-    {
-      var itemProcessed = new Array();
-      var selectorName = '.item .'+arrayTypes[i]+'.total';
-      $(selectorName).each(function(i){
-        itemProcessed[i] = $(this).html();
-      })
-      var itemProcessedTotal = 0;
-      for(var j=0;j < itemProcessed.length; j++)
-      {
-        itemProcessedTotal += parseInt(itemProcessed[j]);     
-      }
-      document.write('<div class="item"><div>'+arrayTypes[i]+'</div>');
-      document.write('<div class="'+arrayTypes[i]+' value">'+itemProcessedTotal+'</div></div>');
-    }
-  document.write('</div></div></div>');
-}
-</script>
-<title>
-Sendgrid Stats
-</title>
+
 </head>
 <body>
-
-<div class="header">
-Sendgrid Accumulator Stats
-
-<form action="index.php" method="post">
-<?php
-//get class into the page
-
-require_once('../../lib/tc_calendar.php');
-
-//instantiate class and set properties
-    
-      $date4_default = (isset($_POST['date4']) ? $_POST['date4'] : date('Y-m-d')); 
-      $date3_default = (isset($_POST['date3']) ? $_POST['date3'] : date('Y-m-d', strtotime('-4 week'))); 
-      $myCalendar = new tc_calendar("date3", true, false);
-      $myCalendar->setIcon("iconCalendar.gif");
-      $myCalendar->setDate(date('d', strtotime($date3_default))
-            , date('m', strtotime($date3_default))
-            , date('Y', strtotime($date3_default)));
-      $myCalendar->setPath("/stats/");
-      $myCalendar->setYearInterval(1970, 2020);
-      $myCalendar->setAlignment('left', 'bottom');
-      $myCalendar->setDatePair('date3', 'date4', $date4_default);
-      print('<div style="float:left; padding:10px;"><div style="float:left;">From: </div>');
-      $myCalendar->writeScript();
-      print('</div>');
-      $myCalendar = new tc_calendar("date4", true, false);
-      $myCalendar->setIcon("iconCalendar.gif");
-      $myCalendar->setDate(date('d', strtotime($date4_default))
-           , date('m', strtotime($date4_default))
-           , date('Y', strtotime($date4_default)));
-      $myCalendar->setPath("/stats/");
-      $myCalendar->setYearInterval(1970, 2020);
-      $myCalendar->setAlignment('left', 'bottom');
-      $myCalendar->setDatePair('date3', 'date4', $date3_default);
-      print('<div style="float:left; padding:10px;"><div style="float:left;">To: </div>');
-      $myCalendar->writeScript();
-      print('</div>');
-?>
-<input type="submit" style="float:left; margin-left:25px; margin-top:7px;" />
-</form>
-</div>
-
-<div class="dateRange">
-    <span>
-    <?php print('Current Query Begins: '. $date3_default);?>
-    </span>
-    <span>
-    <?php print('and Ends: '. $date4_default);?>
-    </span>
-</div>
-<?php
-    getCountBySenatorQuery($instanceList);
-    mysql_close($dbLink);
-?>
-<script>
-getAllSenatorTotal();
-</script>
+  <?php
+    session_start();
+    if(isset($_SESSION['kickbackerror']))
+    {
+      print('<script>alert("'.$_SESSION['kickbackerror'].'");</script>');
+      unset($_SESSION['kickbackerror']);
+    }
+  ?>
+  <h1  style="text-align:center;">
+    Sendgrid Stats Accumulator Login
+  </h1>
+  <h3  style="text-align:center;">
+    Use your LDAP/Lotus Notes username and password.
+  </h3>
+  <div style="text-align:center">
+    <form action="" method="post">
+      <div style="text-align:center;">username: <input type="text" name="loginname" > </div>
+      <div style="text-align:center;">password: <input type="password" name="loginpass"> </div>
+      <input type="hidden" name="attempted" value="1">
+      <div style="text-align:center;"><input type="submit" value="submit"> </div>
+  </div>
 </body>
 </html>
