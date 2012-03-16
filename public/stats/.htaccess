@@ -1,4 +1,0 @@
-AuthType Basic
-AuthName "NYSenate Majority Protected Resource"
-AuthUserFile nyss_pw_file
-require user majorityconf
