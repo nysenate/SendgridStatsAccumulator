@@ -6,6 +6,14 @@ if(!@file_exists('../../resources/summary.php') ) {
 } else {
    include('../../resources/summary.php');
 }
+isset($_POST['doLogout']) ? $logout = $_POST['doLogout'] : $logout = '';
+if($logout == 1)
+{
+  session_unset();
+  session_destroy();
+  header('Location: ../index.php');
+}
+
 //Basically we're asking if you have a timestamp for the session... if you enter the page without it (and don't have a session) or the session is timedout (which happens after 10 minutes), you'll be kicked out for session timeout, to prevent unauthorized entry
 if(!isset($_SESSION['allclear']))
 {
@@ -155,6 +163,10 @@ require_once('../../lib/tc_calendar.php');
       print('</div>');
 ?>
 <input type="submit" style="float:left; margin-left:25px; margin-top:7px;" />
+    <form action="" method="post">
+      <input type="hidden" name="doLogout" value="1">
+      <input type="submit" value="Log Out" style="float:left; margin-left:25px; margin-top:7px;">
+    </form>
 </form>
 </div>
 
