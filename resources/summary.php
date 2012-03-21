@@ -1,27 +1,30 @@
 <?php
-
+error_reporting(E_ERROR);
 $config = parse_ini_file('../../config.ini', true);
 $db_host = $config['database']['host'].":".$config['database']['port'];
 $db_user = $config['database']['user'];
 $db_pwd  = $config['database']['pass'];
 $database = $config['database']['name'];
 $permissionslist = $config['permissions'];
-//var_dump($permissionslist);
+
 $searchonview = $_SESSION['groupnamearray'];
 $instances = array();
-
-// $key is CRM instance name; $val is comma-separated list of LDAP groups
-foreach ($permissionslist as $key => $val) {
-    //var_dump($key);
-    $allowedGroups = array_map('trim', explode(',', $val));
-    foreach ($searchonview as $searchval) {
-        if (in_array($searchval, $allowedGroups)) {
-            $instances[] = trim($key);
-            break;   // avoid adding an instance more than once
+if(isset($permissionslist))
+{
+    // $key is CRM instance name; $val is comma-separated list of LDAP groups
+    foreach ($permissionslist as $key => $val) {
+        $allowedGroups = array_map('trim', explode(',', $val));
+        foreach ($searchonview as $searchval) {
+            if (in_array($searchval, $allowedGroups)) {
+                $instances[] = trim($key);
+                break;   // avoid adding an instance more than once
+            }
         }
     }
 }
+else{
 
+}
 $dbLink = mysql_connect($db_host, $db_user, $db_pwd);
 if (!$dbLink) {
     die("Can't connect to database");
@@ -197,7 +200,7 @@ function getDataSenatorTable($datesQuery)
     }
     else
     {
-        print('No Data Found');
+        print('<div class="noData">No Data Found</div>');
     }
 }
 ?>
