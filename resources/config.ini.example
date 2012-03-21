@@ -1,16 +1,16 @@
-; Sendgrid Stats Accumulator sample config file
+; Sendgrid Stats Accumulator (Server and Viewer) sample config file
 
 [debug]
 ; level = ERROR | WARN | NOTICE
-;   The warn will include errors, notice will include errors and warns
-;   Leave blank to turn logging off
+;   The WARN level will include errors; NOTICE will include errors and warns.
+;   Leave blank to turn logging off.
 ; log_file = /path/to/desired/log/file
-;   If this file can't be created an error is logged to the apache log.
-;   Leave blank if you don't want to log to file
+;   If this file can't be created, an error is logged to the Apache log.
+;   Leave it blank if you don't want to log to a file.
 ;
 ; Currently there is no way to disable logging to the database
 debug_level=WARN
-log_file=statserver/statserver.log
+log_file=/var/log/sendgrid/accumulator.log
 
 [database]
 ; These parameters configure the mysql connection string:
@@ -19,17 +19,7 @@ user =
 pass =
 host = localhost
 port = 3306
-name = statserver
-
-[test]
-; These parameters are related to the Apache Configuration
-;   url - the endpoint that sendgrid will be configured to post to
-;   user/pass - the HTTP Auth user/pass combination for access
-;
-; Currently only Basic Auth is supported.
-url = http://localhost/ssa/callback.php
-user = sendgrid
-pass = sendgrid
+name = sendgridstats
 
 [uniqueargs]
 ; These columns are supplied as part of the uniqueArgs field in the SMTP header
@@ -45,7 +35,7 @@ pass = sendgrid
 ; must include their own trailing commas, with the exception of the last line
 ; which CANNOT have one.  Technically speaking, any valid ALTER TABLE syntax
 ; can be added after the initial type definition, but it's not encouraged.
-
+;
 ; For example, if your mail is processed by several jobs and split into several
 ; chunks, you might want the following simple definitions:
 ;
@@ -55,13 +45,19 @@ pass = sendgrid
 ; The above entries will alter the main events table to include two int(10)
 ; unsigned columns which will be automatically populated with the unique
 ; arguments supplied by the SMTP events API.
+mailing_id="int(10) unsigned, ADD INDEX(mailing_id),"
+job_id="int(10) unsigned, ADD INDEX(job_id),"
+queue_id="int(10) unsigned, ADD INDEX(queue_id),"
+instance="varchar(32), ADD INDEX(instance),"
+install_class="varchar(8), ADD INDEX(install_class),"
+servername="varchar(64), ADD INDEX(servername)"
 
 [extracolumns]
 ; These columns are not referenced or used by the SGSA script but
 ; are columns that a specific deployment might require for other
 ; processes. Since their values will never be specified on record
 ; insert, it is recommended that default values be supplied.
-
+;
 ; For example, you may want to mark events as processed (by another
 ; process) and keep the date for that processing:
 ;
@@ -74,3 +70,24 @@ pass = sendgrid
 ;
 ; See NOTE in the [uniqueargs] section for some caveats.
 ;
+processed="int(1) unsigned DEFAULT 0, ADD INDEX(processed),"
+dt_processed="datetime DEFAULT NULL, ADD INDEX(dt_processed)"
+
+[permissions]
+; Permissions for the Accumulator Viewer
+;
+; Specify which CRM instances should be displayed when the user logs in
+; to the Sendgrid Stats Viewer.  Each CRM instance is associated with one
+; or more groups.  If the logged-in user is a member of one of the groups
+; associated with a particular CRM instance, then that CRM instance will
+; be included in the stats output.
+;
+; Format is:
+;    instanceName = groupName [, groupName ...]
+;
+; Multiple groups per CRM instance can be specified by separating them with
+; commas.
+adams = SenatorAdams,MinConfSer,CRMAdministrator
+alesi = SenatorAlesi,MajConfSer,CRMAdministrator
+zeldin = SenatorZeldin,MajConfSer,CRMAdministrator
+
