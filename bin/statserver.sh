@@ -14,7 +14,7 @@ root_dir=$bin_dir/../
 config_file=$root_dir/config.ini
 
 usage () {
-  echo "Usage: $prog [help] [reset] [setup] [test] [siege #workers #tasks]"
+  echo "Usage: $prog [help] [reset] [setup]"
 }
 
 if [ $# -eq 0 ]; then
@@ -24,18 +24,12 @@ fi
 
 teardown=0
 setup=0
-test=0
-siege=0
-workers=0
-tasks=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
     -h|--help|help) usage; exit 0 ;;
     setup) setup=1;;
     reset) teardown=1; setup=1;;
-    test)  test=1;;
-    siege) siege=1; shift; workers=$1; shift; tasks=$1;;
     *) echo "$prog: $1: Invalid option"; usage; exit 1;;
   esac
   shift
@@ -56,6 +50,7 @@ if [ $teardown -eq 1 ]; then
     echo "Dropping tables from existing database $host:$port/$name"
     mysql -h $host -P $port -u $user -p$pass $name -e "DROP TABLE IF EXISTS log; DROP TABLE IF EXISTS bounce, click, deferred, delivered, dropped, open, processed, spamreport, unsubscribe; DROP TABLE IF EXISTS event;"
 fi
+
 
 if [ $setup -eq 1 ]; then
     echo "Loading schema from $bin_dir/../resources/schema.sql"
@@ -82,35 +77,3 @@ if [ $setup -eq 1 ]; then
     mysql -h $host -P $port -u $user -p$pass $name -e "ALTER TABLE event $columns;"
 fi
 
-if [ $test -eq 1 ]; then
-    # Load up the test configuration section
-    eval `sed -e 's/[[:space:]]*\=[[:space:]]*/=/g' \
-        -e 's/;.*$//' \
-        -e 's/[[:space:]]*$//' \
-        -e 's/^[[:space:]]*//' \
-        -e "s/^\(.*\)=\([^\"']*\)$/\1=\"\2\"/" \
-       < $config_file \
-        | sed -n -e "/^\[test\]/,/^\s*\[/{/^[^;].*\=.*/p;}"`
-
-    # Load up the testing data file
-    tests_file=$root_dir/resources/tests.ini
-    for test in `cat $tests_file | grep '\[[A-Za-z0-9_ \-]\+\]' | sed -e 's/^\[\([A-Za-z0-9_ \-]\+\)\].*/\1/' | sed ':a;N;$!ba;s/\n/ /g'`; do
-        args=`sed \
-            -e 's/[[:space:]]*\=[[:space:]]*/=/g' \
-            -e 's/;.*$//' \
-            -e 's/[[:space:]]*$//' \
-            -e 's/^[[:space:]]*//' \
-            -e "s/^\(.*\)=\([^\"']*\)$/-d \1=\2/" \
-           < $tests_file | sed -n -e "/^\[$test\]/,/^\s*\[/{/^[^;].*\=.*/p;}"`
-        output=`curl -i -s --user $user:$pass --url $url $args | head -1`
-        printf "%-15s %s\n" "$test" "$output"
-    done
-fi
-
-if [ $siege -eq 1 ]; then
-    for ((user=0; user<$workers; user++)); do
-        $root_dir/bin/load_test.sh $user $tasks &
-    done
-    wait
-    echo "Finished Sieging."
-fi
