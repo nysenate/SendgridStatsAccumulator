@@ -1,5 +1,5 @@
 <?php
-require_once('../../lib/tc_calendar.php');
+require_once('tc_calendar.php');
 
 $thispage = $_SERVER['PHP_SELF'];
 
