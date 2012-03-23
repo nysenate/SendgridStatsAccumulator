@@ -3,7 +3,6 @@ session_start();
 if (!isset($_SESSION['groups'])) {
   die("You are not authorized to view this page.");
 }
-error_reporting(E_ALL ^ E_NOTICE);
 require_once('summary.php');
 ?>
 <html>
@@ -98,6 +97,11 @@ print('</div>');
     <?php print('and Ends: '. $date4_default);?>
     </span>
 </div>
+<!-- kz debugging: group list for logged in user
+<?php
+  print_r($_SESSION['groups']);
+?>
+-->
 <?php
   $instanceList = getInstances($_SESSION['config'], $_SESSION['groups']);
   displayStats($_SESSION['config'], $instanceList);
