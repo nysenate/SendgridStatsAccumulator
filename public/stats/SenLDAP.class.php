@@ -63,7 +63,7 @@ class SenLDAP
   function getGroups()
   {
     $dn = '';
-    $filter = '(sn='.$this->ldapUser.'*)';
+    $filter = '(uid='.$this->ldapUser.')';
     $attr = array("gidnumber");
     $sr = ldap_search($this->ldapConn, $dn, $filter, $attr);
     if (!$sr) {
