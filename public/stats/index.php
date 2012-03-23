@@ -18,7 +18,10 @@ else if (!isset($config['ldap']['host'])) {
 $ldapHost = $config['ldap']['host'];
 $ldapPort = (isset($config['ldap']['port'])) ? $config['ldap']['port'] : null;
 
-if (isset($_POST['loginname']) && isset($_POST['loginpass'])) {
+if (isset($_SESSION['groups']) && isset($_SESSION['config'])) {
+  header('Location: stats.php');
+}
+else if (isset($_POST['loginname']) && isset($_POST['loginpass'])) {
   $user = $_POST['loginname'];
   $pass = $_POST['loginpass'];
   if (!$user || !$pass) {
