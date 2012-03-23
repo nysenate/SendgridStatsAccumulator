@@ -1,5 +1,9 @@
 ; Sendgrid Stats Accumulator (Server and Viewer) sample config file
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; SERVER configuration
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 [debug]
 ; level = ERROR | WARN | NOTICE
 ;   The WARN level will include errors; NOTICE will include errors and warns.
@@ -72,6 +76,17 @@ servername="varchar(64), ADD INDEX(servername)"
 ;
 processed="int(1) unsigned DEFAULT 0, ADD INDEX(processed),"
 dt_processed="datetime DEFAULT NULL, ADD INDEX(dt_processed)"
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; VIEWER configuration
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+[ldap]
+; The Senate's LDAP server is used to control access to the Viewer.
+; These parameters are used to customize LDAP.
+host = webmail.senate.state.ny.us
+port = 389
 
 [permissions]
 ; Permissions for the Accumulator Viewer
