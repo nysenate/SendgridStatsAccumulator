@@ -85,8 +85,8 @@ function displayStats($cfg, $instances)
     $data[$row['instance']][$row['mailing_id']][$row['event']] = $row;
   }
 
-  //tests if data has usable length. supplies a length of 1 if there's no data.
-  if (count($data) > 1) {
+  // Confirm that there is at least one senator/mailing/event.
+  if (count($data) > 0) {
     foreach (array_keys($data) as $senator) {
       displaySenatorStats($data[$senator], $senator);
     }
