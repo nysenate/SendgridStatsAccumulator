@@ -34,8 +34,29 @@ class SenLDAP
 
     $ldapBind = ldap_bind($conn, $user, $pass);
     if (!$ldapBind) {
-      //$err = "Unable to log in to LDAP server as user [$user].";
       $err = "Wrong Username and/or Password.";
+      ldap_unbind($conn);
+      return false;
+    }
+
+    // Confirm that the provided username is truly a username.
+    $sr = ldap_search($conn, '', "uid=$user", array('uid'));
+    if (!$sr) {
+      $err = "Unable to validate username.";
+      ldap_unbind($conn);
+      return false;
+    }
+
+    $ent = ldap_get_entries($conn, $sr);
+    if ($ent['count'] == 0) {
+      $err = "Login [$user] is not a valid username.";
+      ldap_unbind($conn);
+      return false;
+    }
+
+    if ($ent[0]['uid'][0] != $user) {
+      $err = "Provided username does not match looked-up username.";
+      $ldap_unbind($conn);
       return false;
     }
 
@@ -62,10 +83,11 @@ class SenLDAP
 
   function getGroups()
   {
+    $conn = $this->ldapConn;
     $dn = '';
     $filter = '(uid='.$this->ldapUser.')';
     $attr = array("gidnumber");
-    $sr = ldap_search($this->ldapConn, $dn, $filter, $attr);
+    $sr = ldap_search($conn, $dn, $filter, $attr);
     if (!$sr) {
       echo "ldap_search() failed\n";
       return null;
@@ -73,7 +95,7 @@ class SenLDAP
 
     //Gets the entries and reads their length. Each array starts with a
     //namespace and then gives the data, hence the -1 to move the cursor up one
-    $entries = ldap_get_entries($this->ldapConn, $sr);
+    $entries = ldap_get_entries($conn, $sr);
     $gidarray = $entries[0]['gidnumber'];
     $gidcount = $gidarray['count'];
     $attr = array("displayname");
@@ -81,8 +103,8 @@ class SenLDAP
 
     for ($i = 0; $i < $gidcount; $i++) {
       $filter = '(&(objectClass=groupOfNames)(gidnumber='.$gidarray[$i].'))';
-      $sr = ldap_search($this->ldapConn, $dn, $filter, $attr);
-      $groupEntry = ldap_get_entries($this->ldapConn, $sr);
+      $sr = ldap_search($conn, $dn, $filter, $attr);
+      $groupEntry = ldap_get_entries($conn, $sr);
       $groupNames[] = $groupEntry[0]['displayname'][0];
     }
     return $groupNames;
