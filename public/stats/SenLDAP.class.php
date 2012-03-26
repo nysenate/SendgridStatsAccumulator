@@ -3,16 +3,20 @@
 class SenLDAP
 {
   const DEFAULT_LDAP_PORT = 389;
+  const DEFAULT_BASE_DN = 'o=senate';
 
   private $ldapConn;
   private $ldapUser;
+  private $groupNames;
 
 
   function __construct()
   {
     $ldapConn = null;
     $ldapUser = null;
+    $groupNames = null;
   }
+
 
 
   function login($user, $pass, $host, $port = self::DEFAULT_LDAP_PORT, &$err)
@@ -40,31 +44,41 @@ class SenLDAP
     }
 
     // Confirm that the provided username is truly a username.
-    $sr = ldap_search($conn, '', "uid=$user", array('uid'));
+    $attrs = array('uid', 'gidnumber');
+    $sr = ldap_list($conn, self::DEFAULT_BASE_DN, "uid=$user", $attrs);
     if (!$sr) {
       $err = "Unable to validate username.";
       ldap_unbind($conn);
       return false;
     }
 
-    $ent = ldap_get_entries($conn, $sr);
-    if ($ent['count'] == 0) {
+    $ent_count = ldap_count_entries($conn, $sr);
+    if ($ent_count !== 1) {
       $err = "Login [$user] is not a valid username.";
       ldap_unbind($conn);
       return false;
     }
 
-    if ($ent[0]['uid'][0] != $user) {
+    $ent = ldap_first_entry($conn, $sr);
+    $uids = ldap_get_values($conn, $ent, "uid");
+
+    if ($uids['count'] > 1 || $uids[0] != $user) {
       $err = "Provided username does not match looked-up username.";
-      $ldap_unbind($conn);
+      ldap_unbind($conn);
       return false;
     }
 
+    $gids = ldap_get_values($conn, $ent, "gidnumber");
+    unset($gids['count']);
+    $groupNames = $this->convertGroupIdsToNames($conn, $gids);
+
     $this->ldapConn = $conn;
     $this->ldapUser = $user;
+    $this->groupNames = $groupNames;
     $err = null;
     return true;
   } // login()
+
 
 
   function logout()
@@ -72,6 +86,7 @@ class SenLDAP
     if ($this->ldapConn && ldap_unbind($this->ldapConn)) {
       $this->ldapConn = null;
       $this->ldapUser = null;
+      $this->groupNames = null;
       return true;
     }
     else {
@@ -83,32 +98,35 @@ class SenLDAP
 
   function getGroups()
   {
-    $conn = $this->ldapConn;
-    $dn = '';
-    $filter = '(uid='.$this->ldapUser.')';
-    $attr = array("gidnumber");
-    $sr = ldap_search($conn, $dn, $filter, $attr);
-    if (!$sr) {
-      echo "ldap_search() failed\n";
-      return null;
-    }
+    return $this->groupNames;
+  } // getGroups()
 
-    //Gets the entries and reads their length. Each array starts with a
-    //namespace and then gives the data, hence the -1 to move the cursor up one
-    $entries = ldap_get_entries($conn, $sr);
-    $gidarray = $entries[0]['gidnumber'];
-    $gidcount = $gidarray['count'];
-    $attr = array("displayname");
+
+
+  private function convertGroupIdsToNames($ldapConn, $gids)
+  {
+    $gidcount = count($gids);
     $groupNames = array();
 
-    for ($i = 0; $i < $gidcount; $i++) {
-      $filter = '(&(objectClass=groupOfNames)(gidnumber='.$gidarray[$i].'))';
-      $sr = ldap_search($conn, $dn, $filter, $attr);
-      $groupEntry = ldap_get_entries($conn, $sr);
-      $groupNames[] = $groupEntry[0]['displayname'][0];
+    if ($gidcount > 0) {
+      $attr = array("displayname");
+      $filter = '(&(objectClass=groupOfNames)(|';
+      for ($i = 0; $i < $gidcount; $i++) {
+        $filter .= '(gidnumber='.$gids[$i].')';
+      }
+      $filter .= '))';
+
+      // Cannot use DEFAULT_BASE_DN because SenLDAP groups are not placed
+      // into the o=senate DN.
+      $sr = ldap_list($ldapConn, '', $filter, $attr);
+      $ents = ldap_get_entries($ldapConn, $sr);
+      $ent_count = ldap_count_entries($ldapConn, $sr);
+      for ($i = 0; $i < $ent_count; $i++) {
+        $groupNames[] = $ents[$i]['displayname'][0];
+      }
     }
     return $groupNames;
-  } // getGroups()
+  } // convertGroupIdsToNames()
 
 } // SenLDAP
 
