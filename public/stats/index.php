@@ -34,6 +34,7 @@ else if (isset($_POST['loginname']) && isset($_POST['loginpass'])) {
     }
     else {
       $userGroups = $nyssLdap->getGroups();
+      $nyssLdap->logout();
       $_SESSION['config'] = $config;
       $_SESSION['groups'] = $userGroups;
       header('Location: stats.php');
