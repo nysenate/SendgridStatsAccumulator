@@ -3,7 +3,7 @@
 class SenLDAP
 {
   const DEFAULT_LDAP_PORT = 389;
-  const DEFAULT_BASE_DN = 'o=senate';
+  const DEFAULT_BASE_DN = '';
 
   private $ldapConn;
   private $ldapUser;
@@ -45,6 +45,8 @@ class SenLDAP
 
     // Confirm that the provided username is truly a username.
     $attrs = array('uid', 'gidnumber');
+    // BASE_DN must be empty, because o=senate will miss those persons
+    // who have the OU attribute in their DN.
     $sr = ldap_list($conn, self::DEFAULT_BASE_DN, "uid=$user", $attrs);
     if (!$sr) {
       $err = "Unable to validate username.";
@@ -116,9 +118,8 @@ class SenLDAP
       }
       $filter .= '))';
 
-      // Cannot use DEFAULT_BASE_DN because SenLDAP groups are not placed
-      // into the o=senate DN.
-      $sr = ldap_list($ldapConn, '', $filter, $attr);
+      // BASE_DN must be empty, because groups are not in o=senate.
+      $sr = ldap_list($ldapConn, self::DEFAULT_BASE_DN, $filter, $attr);
       $ents = ldap_get_entries($ldapConn, $sr);
       $ent_count = ldap_count_entries($ldapConn, $sr);
       for ($i = 0; $i < $ent_count; $i++) {
