@@ -220,9 +220,9 @@ function log_($debug_level, $message) {
     }
 
     //Log to the database
-    $safe_message = mysql_real_escape_string($message);
-    exec_query("INSERT INTO log (dt_logged, debug_level, message)
-                VALUES (NOW(), '$debug_level', '$safe_message')");
+    //$safe_message = mysql_real_escape_string($message);
+    //exec_query("INSERT INTO log (dt_logged, debug_level, message)
+    //            VALUES (NOW(), '$debug_level', '$safe_message')");
 }
 
 function exec_query($sql) {
