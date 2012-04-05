@@ -43,6 +43,7 @@ CREATE TABLE deferred (
     event_id int(10) unsigned PRIMARY KEY,
     reason text,
     attempt_num  int(10) unsigned,
+    smtp_id varchar(255),
 
     FOREIGN KEY (event_id) REFERENCES event(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
