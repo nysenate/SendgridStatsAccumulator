@@ -112,7 +112,7 @@ function create_event($config, $data, $db) {
     switch ($event) {
         case 'bounce': $insert_type .= "(event_id, reason, type, status, smtp_id) VALUES (@event_id, '$reason','$type', '$status','$smtp_id')"; break;
         case 'click': $insert_type .= "(event_id, url) VALUES (@event_id, '$url')"; break;
-        case 'deferred': $insert_type .= "(event_id, reason, attempt_num, smtp_id) VALUES (@event_id, '$reason', $attempt, '$smtp_id')";break;
+        case 'deferred': $insert_type .= "(event_id, reason, attempt_num, smtp_id) VALUES (@event_id, '$response', $attempt, '$smtp_id')";break;
         case 'delivered': $insert_type .= "(event_id, response, smtp_id) VALUES (@event_id, '$response', '$smtp_id')"; break;
         case 'dropped': $insert_type .= "(event_id, reason , smtp_id) VALUES (@event_id, '$reason', '$smtp_id')"; break;
         case 'processed': $insert_type .= "(event_id, smtp_id) VALUES (@event_id,'$smtp_id')"; break;
