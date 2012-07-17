@@ -82,8 +82,8 @@ function create_event($config, $data, $db) {
     $timestamp = date('Y-m-d H:i:s',get_default('timestamp',$cleaned_data,0));
 
     $matches = array();
-    $fields = "event, email, category, `timestamp`";
-    $values = "'$event','$email','$category','$timestamp'";
+    $fields = "event_type, email, category, dt_created, dt_received";
+    $values = "'$event','$email','$category','$timestamp', NOW()";
     foreach( $config['uniqueargs'] as $key => $value ) {
         if( preg_match('/^ *([A-Za-z0-9_]+).*/', $value, $matches) == 0 )
             error_out(400,"UniqueArg '$key' has an improper value. Must start with the column type.");
