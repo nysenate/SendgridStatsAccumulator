@@ -14,9 +14,14 @@ if(strpos($_SERVER['CONTENT_TYPE'],'application/json') !== FALSE) {
     foreach($batchData as $jsonData) {
         create_event($config, json_decode($jsonData, true), $db);
     }
-} else {
+} else if ($_SERVER['REQUEST_METHOD']=='POST') {
     log_("NOTICE",mysql_real_escape_string(http_build_query($_POST),$db));
     create_event($config, $_POST, $db);
+} else if ($_SERVER['REQUEST_METHOD']=='GET') {
+    log_("NOTICE",mysql_real_escape_string(http_build_query($_GET),$db));
+    create_event($config, $_GET, $db);
+} else {
+    error_out(400, "Only POST, GET, and application/json requests supported.");
 }
 
 //Return the success code to SendGrid
