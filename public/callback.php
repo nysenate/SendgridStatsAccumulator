@@ -99,7 +99,7 @@ function create_event($config, $data, $db) {
         else
             $values .= ",".((isset($cleaned_data[$key]) && is_numeric($cleaned_data[$key])) ? $cleaned_data[$key] : 0);
     }
-    $insert_event = "INSERT INTO event ($fields) VALUES ($values)";
+    $insert_event = "INSERT INTO incoming ($fields) VALUES ($values)";
 
     // Build the event specific insert statement. Make sure to supply a default
     // value for each one of these fields because we may have previously issued
