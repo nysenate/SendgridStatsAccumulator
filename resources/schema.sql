@@ -3,21 +3,31 @@
 --
 -- TODO: Should we still keep the empty event tables for consistency?
 --
+-- For each event table we need to remove the foreign keys because of how
+-- we are moving rows from one table to another; so we need to be careful.
+--   ALTER TABLE <event_table> DROP FOREIGN KEY <fk_name>;
+--
+-- Delete the foreign keys pointing to the incoming table before we change the column
+--   ALTER TABLE `bounce` DROP FOREIGN KEY `bounce_ibfk_1`;
+--   ALTER TABLE `click` DROP FOREIGN KEY `click_ibfk_1`;
+--   ALTER TABLE `deferred` DROP FOREIGN KEY `deferred_ibfk_1`;
+--   ALTER TABLE `delivered` DROP FOREIGN KEY `delivered_ibfk_1`;
+--   ALTER TABLE `dropped` DROP FOREIGN KEY `dropped_ibfk_1`;
+--   ALTER TABLE `open` DROP FOREIGN KEY `open_ibfk_1`;
+--   ALTER TABLE `processed` DROP FOREIGN KEY `processed_ibfk_1`;
+--   ALTER TABLE `spamreport` DROP FOREIGN KEY `spamreport_ibfk_1`;
+--   ALTER TABLE `unsubscribe` DROP FOREIGN KEY `unsubscribe_ibfk_1`;
+--
 -- Queries for the event table transform...I think.
 --   TODO: Double check that ENUM COLUMN Change and if that will work
 --   ALTER TABLE event RENAME TO incoming;
---   ALTER TABLE incoming CHANGE COLUMN id event_id int(10) unsigned NOT NULL PRIMARY KEY AUTO_INCREMENT;
+-- avehlies: no need to set primary key since it already is
+--   ALTER TABLE incoming CHANGE COLUMN id event_id int(10) unsigned NOT NULL AUTO_INCREMENT;
 --   ALTER TABLE incoming CHANGE COLUMN event event_type ENUM('processed','bounce','open','delivered','click','spamreport','dropped','deferred','unsubscribe');
 --   ALTER TABLE incoming CHANGE COLUMN timestamp dt_created datetime DEFAULT NULL;
 --   ALTER TABLE incoming ADD COLUMN dt_received datetime DEFAULT NULL;
 --   ALTER TABLE incoming DROP COLUMN processed;
 --   ALTER TABLE incoming DROP COLUMN dt_processed;
---
--- For each event table we need to remove the foreign keys because of how
--- we are moving rows from one table to another; so we need to be careful.
---   ALTER TABLE <event_table> DROP FOREIGN KEY <fk_name>;
---
-
 -- Drop queries for testing.
 drop table if exists summary;
 drop table if exists incoming;
@@ -140,7 +150,7 @@ DELIMITER |
                 INSERT INTO summary(
                     mailing_id, instance, install_class, event, category, count, dt_first, dt_last
                 ) VALUES (
-                    NEW.mailing_id, NEW.instance, NEW.install_class, NEW.event, NEW.category, 1, NEW.dt_created, NEW.dt_created
+                    NEW.mailing_id, NEW.instance, NEW.install_class, NEW.event_type, NEW.category, 1, NEW.dt_created, NEW.dt_created
                 ) ON DUPLICATE KEY UPDATE
                     count = ( count +1 ),
                     dt_last = IF( dt_last < NEW.dt_created, NEW.dt_created, dt_last ),
@@ -186,8 +196,8 @@ CREATE TABLE instance (
 
 CREATE TABLE message (
     id int unsigned PRIMARY KEY auto_increment,
-    instance_id unsigned int,
-    mailing_id unsigned int,
+    instance_id int unsigned,
+    mailing_id int unsigned,
     category varchar(255),
 
     KEY (category),
@@ -219,5 +229,5 @@ CREATE TABLE archive (
     KEY (dt_created),
     KEY (dt_received),
     KEY (dt_processed),
-    FOREIGN KEY (message_id) REFERENCES message(id),
+    FOREIGN KEY (message_id) REFERENCES message(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
