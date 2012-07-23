@@ -18,7 +18,7 @@ BEGIN
     DECLARE processed INT(1);
     DECLARE dt_processed DATETIME;
     DECLARE is_test TINYINT;
-    
+
     DECLARE num_rows INT(11);
     DECLARE no_more_rows TINYINT(1);
     DECLARE instance_id INT(11) DEFAULT NULL;
@@ -26,7 +26,7 @@ BEGIN
 
     DECLARE BATCH_SIZE INT(11) DEFAULT 50;
     DECLARE BATCH_OFFSET INT(11) DEFAULT 0;
-    DECLARE all_event_cursor CURSOR FOR SELECT COUNT(*) FROM incoming;
+    DECLARE all_event_cursor CURSOR FOR SELECT COUNT(*) FROM event;
     DECLARE CONTINUE HANDLER FOR NOT FOUND SET no_more_rows = TRUE;
 
     OPEN all_event_cursor;
@@ -35,14 +35,14 @@ BEGIN
 
     WHILE num_rows > 0 DO
     BEGIN
-        DECLARE event_cursor CURSOR FOR 
-            SELECT * FROM incoming LIMIT BATCH_SIZE OFFSET BATCH_OFFSET;
+        DECLARE event_cursor CURSOR FOR
+            SELECT * FROM event;
 
         OPEN event_cursor;
         the_loop: LOOP
 
             IF no_more_rows THEN
-                no_more_rows = TRUE;
+                SET no_more_rows = TRUE;
                 CLOSE event_cursor;
                 LEAVE the_loop;
             END IF;
@@ -56,7 +56,7 @@ BEGIN
             -- Get and create if necessary the instance and message ids
             SET instance_id = returnInstance(install_class, servername, instance);
             SET message_id = returnMessage(instance_id, mailing_id, category);
-            
+
             -- Determine what the result should be recorded as
             IF processed = 1 THEN
                 SET result = "ARCHIVED";
@@ -71,7 +71,7 @@ BEGIN
                 event_id, message_id, job_id, queue_id, event_type, result, email, is_test, dt_created, dt_received, dt_processed)
             VALUES(
                 id, message_id, job_id, queue_id, event, result, email, is_test, timestamp, NULL, dt_processed);
-            
+
         END LOOP the_loop;
 
         SET BATCH_OFFSET = BATCH_OFFSET + BATCH_SIZE;
@@ -97,7 +97,7 @@ BEGIN
         WHERE install_class=in_install_class AND
                 servername=in_servername AND
                 name=in_name;
-    
+
     DECLARE CONTINUE HANDLER FOR NOT FOUND
         SET no_more_rows = TRUE;
 
@@ -129,7 +129,7 @@ BEGIN
         WHERE   instance_id = in_instance_id AND
                 mailing_id = in_mailing_id AND
                 category=in_category;
-    
+
     DECLARE CONTINUE HANDLER FOR NOT FOUND SET no_more_rows = TRUE;
 
     OPEN message_cursor;
@@ -147,4 +147,4 @@ END$$
 
 DELIMITER ;
 
-#call archiveEvents();
+call archiveEvents();

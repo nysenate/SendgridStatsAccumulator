@@ -12,14 +12,7 @@ ALTER TABLE `spamreport` DROP FOREIGN KEY `spamreport_ibfk_1`;
 ALTER TABLE `unsubscribe` DROP FOREIGN KEY `unsubscribe_ibfk_1`;
 
 -- Queries for the event table transform
-ALTER TABLE event RENAME TO incoming;
-ALTER TABLE incoming CONVERT TO CHARACTER SET utf8 COLLATE utf8_unicode_ci;
-ALTER TABLE incoming CHANGE COLUMN id event_id int(10) unsigned NOT NULL AUTO_INCREMENT;
-ALTER TABLE incoming CHANGE COLUMN event event_type ENUM('processed','bounce','open','delivered','click','spamreport','dropped','deferred','unsubscribe');
-ALTER TABLE incoming CHANGE COLUMN timestamp dt_created datetime DEFAULT NULL;
-ALTER TABLE incoming ADD COLUMN dt_received datetime DEFAULT NULL;
-ALTER TABLE incoming DROP COLUMN processed;
-ALTER TABLE incoming DROP COLUMN dt_processed;
+ALTER TABLE event CONVERT TO CHARACTER SET utf8 COLLATE utf8_unicode_ci;
 
 -- New table schemas for long term storage and compression
 -- Introduces two layers of compression from the incoming table
@@ -35,9 +28,9 @@ ALTER TABLE incoming DROP COLUMN dt_processed;
 --   dt_processed: lets us know when
 --   result: lets us know what happened
 --
-drop table if exists instance;
-drop table if exists message;
 drop table if exists archive;
+drop table if exists message;
+drop table if exists instance;
 
 CREATE TABLE instance (
     id int unsigned PRIMARY KEY auto_increment,
@@ -64,11 +57,11 @@ CREATE TABLE message (
 
 
 CREATE TABLE archive (
-    id int unsigned PRIMARY KEY auto_increment,
+    event_id int unsigned PRIMARY KEY,
     message_id int unsigned COMMENT 'Ties request back to the specific instance-mailing.',
     job_id int unsigned COMMENT 'Marks which subjob of a mailing made the request',
     queue_id int unsigned COMMENT 'Instance-unique id assigned by bluebird.',
-    type ENUM('processed','bounce','open','delivered','click','spamreport','dropped','deferred','unsubscribe'),
+    event_type ENUM('processed','bounce','open','delivered','click','spamreport','dropped','deferred','unsubscribe'),
     result ENUM('FAILED','SKIPPED','ARCHIVED'),
     email varchar(255),
     is_test boolean,
@@ -79,7 +72,7 @@ CREATE TABLE archive (
     KEY (message_id),
     KEY (job_id),
     KEY (queue_id),
-    KEY (type),
+    KEY (event_type),
     KEY (result),
     KEY (email),
     KEY (is_test),
@@ -88,5 +81,35 @@ CREATE TABLE archive (
     KEY (dt_processed),
     FOREIGN KEY (message_id) REFERENCES message(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+-- TODO: set the auto increment KEY
+CREATE TABLE incoming (
+  id int(10) unsigned NOT NULL PRIMARY KEY AUTO_INCREMENT,
+  email varchar(255) DEFAULT NULL,
+  category varchar(255) DEFAULT NULL,
+  event_type ENUM('processed','bounce','open','delivered','click','spamreport','dropped','deferred','unsubscribe'),
+  mailing_id int(10) unsigned DEFAULT NULL,
+  job_id int(10) unsigned DEFAULT NULL,
+  queue_id int(10) unsigned DEFAULT NULL,
+  instance varchar(32) DEFAULT NULL,
+  install_class varchar(8) DEFAULT NULL,
+  servername varchar(64) DEFAULT NULL,
+  dt_created datetime DEFAULT NULL,
+  dt_received datetime DEFAULT NULL,
+  is_test tinyint(1) DEFAULT '0',
+
+  KEY (event_type),
+  KEY (email),
+  KEY (category),
+  KEY (mailing_id),
+  KEY (job_id),
+  KEY (queue_id),
+  KEY (instance),
+  KEY (install_class),
+  KEY (servername),
+  KEY (dt_created),
+  KEY (dt_received),
+  KEY (is_test)
+) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci; -- Currently 20530724
 
 COMMIT;

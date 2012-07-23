@@ -13,6 +13,7 @@ CREATE TABLE summary (
     UNIQUE KEY (mailing_id,instance,install_class,event)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
+-- TODO: set the auto increment KEY
 CREATE TABLE incoming (
   id int(10) unsigned NOT NULL PRIMARY KEY AUTO_INCREMENT,
   email varchar(255) DEFAULT NULL,
