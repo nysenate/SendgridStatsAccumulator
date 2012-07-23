@@ -35,17 +35,11 @@ BEGIN
 
     WHILE num_rows > 0 DO
     BEGIN
-        DECLARE event_cursor CURSOR FOR
-            SELECT * FROM event;
+        DECLARE event_cursor CURSOR FOR 
+            SELECT * FROM event LIMIT BATCH_OFFSET, BATCH_SIZE;
 
         OPEN event_cursor;
         the_loop: LOOP
-
-            IF no_more_rows THEN
-                SET no_more_rows = TRUE;
-                CLOSE event_cursor;
-                LEAVE the_loop;
-            END IF;
 
             FETCH event_cursor INTO
                         id, email, category, timestamp,
@@ -53,10 +47,16 @@ BEGIN
                         instance, install_class, servername,
                         processed, dt_processed, is_test;
 
+            IF no_more_rows THEN
+                SET no_more_rows = FALSE;
+                CLOSE event_cursor;
+                LEAVE the_loop;
+            END IF;
+
             -- Get and create if necessary the instance and message ids
             SET instance_id = returnInstance(install_class, servername, instance);
             SET message_id = returnMessage(instance_id, mailing_id, category);
-
+            
             -- Determine what the result should be recorded as
             IF processed = 1 THEN
                 SET result = "ARCHIVED";
@@ -94,10 +94,10 @@ BEGIN
     DECLARE no_more_rows TINYINT(1);
     DECLARE instance_cursor CURSOR FOR
         SELECT id FROM `instance`
-        WHERE install_class=in_install_class AND
-                servername=in_servername AND
-                name=in_name;
-
+        WHERE CONVERT(install_class USING utf8)=CONVERT(in_install_class USING utf8) AND
+                CONVERT(servername USING utf8)=CONVERT(in_servername USING utf8) AND
+                CONVERT(name USING utf8)=CONVERT(in_name USING utf8);
+    
     DECLARE CONTINUE HANDLER FOR NOT FOUND
         SET no_more_rows = TRUE;
 
@@ -128,8 +128,8 @@ BEGIN
         SELECT id FROM `message`
         WHERE   instance_id = in_instance_id AND
                 mailing_id = in_mailing_id AND
-                category=in_category;
-
+                CONVERT(category USING utf8)=CONVERT(in_category USING utf8);
+    
     DECLARE CONTINUE HANDLER FOR NOT FOUND SET no_more_rows = TRUE;
 
     OPEN message_cursor;

@@ -13,6 +13,8 @@ ALTER TABLE `unsubscribe` DROP FOREIGN KEY `unsubscribe_ibfk_1`;
 
 -- Queries for the event table transform
 ALTER TABLE event CONVERT TO CHARACTER SET utf8 COLLATE utf8_unicode_ci;
+alter table instance convert to character set utf8 collate utf8_unicode_ci;
+alter table message convert to character set utf8 collate utf8_unicode_ci;
 
 -- New table schemas for long term storage and compression
 -- Introduces two layers of compression from the incoming table
