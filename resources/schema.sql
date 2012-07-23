@@ -1,46 +1,3 @@
--- DROP TABLE only for testing, shouldn't need to drop/reload
--- any of these tables ALTER TABLEs will do the work.
---
--- TODO: Should we still keep the empty event tables for consistency?
---
--- For each event table we need to remove the foreign keys because of how
--- we are moving rows from one table to another; so we need to be careful.
---   ALTER TABLE <event_table> DROP FOREIGN KEY <fk_name>;
---
--- Delete the foreign keys pointing to the incoming table before we change the column
---   ALTER TABLE `bounce` DROP FOREIGN KEY `bounce_ibfk_1`;
---   ALTER TABLE `click` DROP FOREIGN KEY `click_ibfk_1`;
---   ALTER TABLE `deferred` DROP FOREIGN KEY `deferred_ibfk_1`;
---   ALTER TABLE `delivered` DROP FOREIGN KEY `delivered_ibfk_1`;
---   ALTER TABLE `dropped` DROP FOREIGN KEY `dropped_ibfk_1`;
---   ALTER TABLE `open` DROP FOREIGN KEY `open_ibfk_1`;
---   ALTER TABLE `processed` DROP FOREIGN KEY `processed_ibfk_1`;
---   ALTER TABLE `spamreport` DROP FOREIGN KEY `spamreport_ibfk_1`;
---   ALTER TABLE `unsubscribe` DROP FOREIGN KEY `unsubscribe_ibfk_1`;
---
--- Queries for the event table transform...I think.
---   TODO: Double check that ENUM COLUMN Change and if that will work
---   ALTER TABLE event RENAME TO incoming;
--- avehlies: no need to set primary key since it already is
---   ALTER TABLE incoming CHANGE COLUMN id event_id int(10) unsigned NOT NULL AUTO_INCREMENT;
---   ALTER TABLE incoming CHANGE COLUMN event event_type ENUM('processed','bounce','open','delivered','click','spamreport','dropped','deferred','unsubscribe');
---   ALTER TABLE incoming CHANGE COLUMN timestamp dt_created datetime DEFAULT NULL;
---   ALTER TABLE incoming ADD COLUMN dt_received datetime DEFAULT NULL;
---   ALTER TABLE incoming DROP COLUMN processed;
---   ALTER TABLE incoming DROP COLUMN dt_processed;
--- Drop queries for testing.
-drop table if exists summary;
-drop table if exists incoming;
-drop table if exists bounce;
-drop table if exists open;
-drop table if exists delivered;
-drop table if exists click;
-drop table if exists spamreport;
-drop table if exists dropped;
-drop table if exists deferred;
-drop table if exists processed;
-drop table if exists unsubscribe;
-
 CREATE TABLE summary (
     -- Keys representing the bucket to be summarized
     mailing_id int(10) NOT NULL,
@@ -176,12 +133,6 @@ DELIMITER ;
 -- rows have been processed:
 --   dt_processed: lets us know when
 --   result: lets us know what happened
---
--- TODO: Migration plan and corresponding queries.
-drop table if exists instance;
-drop table if exists message;
-drop table if exists archive;
-
 CREATE TABLE instance (
     id int unsigned PRIMARY KEY auto_increment,
     install_class ENUM('prod','test','dev'),
