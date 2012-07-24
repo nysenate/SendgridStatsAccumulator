@@ -7,17 +7,17 @@ $config = load_config($config_path);
 //Log the request parameters, encoded as a string for replication (curl)
 $db = get_db_connection();
 
-if(strpos($_SERVER['CONTENT_TYPE'],'application/json') !== FALSE) {
+if(isset($_SERVER['CONTENT_TYPE']) && strpos($_SERVER['CONTENT_TYPE'],'application/json') !== FALSE) {
     //Process the batched data, separated json objects by new lines
     $batchData = file("php://input", FILE_IGNORE_NEW_LINES|FILE_SKIP_NEW_LINES);
     log_("NOTICE",mysql_real_escape_string(print_r($batchData,true)));
     foreach($batchData as $jsonData) {
         create_event($config, json_decode($jsonData, true), $db);
     }
-} else if ($_SERVER['REQUEST_METHOD']=='POST') {
+} else if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD']=='POST') {
     log_("NOTICE",mysql_real_escape_string(http_build_query($_POST),$db));
     create_event($config, $_POST, $db);
-} else if ($_SERVER['REQUEST_METHOD']=='GET') {
+} else if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD']=='GET') {
     log_("NOTICE",mysql_real_escape_string(http_build_query($_GET),$db));
     create_event($config, $_GET, $db);
 } else {
@@ -43,8 +43,8 @@ function create_event($config, $data, $db) {
         'spamreport'  => array(),
         'unsubscribe' => array()
     );
-    $unique_keys = array_keys($config['uniqueargs']);
     $basic_keys = array('email', 'event', 'category','timestamp');
+    $unique_keys = array('mailing_id','job_id','is_test','queue_id','instance','install_class','servername');
 
     // We require a valid event_type to be specified
     $event_types = array_keys($event_keys);
@@ -74,32 +74,24 @@ function create_event($config, $data, $db) {
         log_("WARN","Unexpected keys found for event type '$event_type': $keys");
     }
 
-    // Build the generic event table insert statement. We need to be careful
-    // here because unique arguments can be string or non string types and must
-    // be written into the sql statement differently (with respect to ''s)
-    // TODO: Validate that an numeric column has an integer value going into it
-    $numeric_types = array('int','integer','smallint','decimal','float','real',
-                           'double','numeric','fixed','dec','bool','tinyint');
+    // Build the generic event insert statement. Make sure to supply a default
+    // value for each one of these fields because we may have previously issued
+    // a warning about missing parameters from the POST request.
+    $event = get_default('event', $cleaned_data, '');
+    $email = get_default('email', $cleaned_data, '');
+    $instance=get_default('instance', $cleaned_data, '');
+    $category = get_default('category', $cleaned_data, '');
+    $servername=get_default('servername', $cleaned_data, '');
+    $install_class=get_default('install_class', $cleaned_data, '');
+    $job_id=get_default('job_id', $cleaned_data, 0);
+    $is_test=get_default('is_test', $cleaned_data, 0);
+    $queue_id=get_default('queue_id', $cleaned_data, 0);
+    $mailing_id=get_default('mailing_id', $cleaned_data, 0);
+    $timestamp = date('Y-m-d H:i:s', get_default('timestamp', $cleaned_data, 0));
 
-    $event = get_default('event',$cleaned_data,'');
-    $email = get_default('email',$cleaned_data,'');
-    $category = get_default('category',$cleaned_data,'');
-    $timestamp = date('Y-m-d H:i:s',get_default('timestamp',$cleaned_data,0));
-
-    $matches = array();
-    $fields = "event, email, category, `timestamp`";
-    $values = "'$event','$email','$category','$timestamp'";
-    foreach( $config['uniqueargs'] as $key => $value ) {
-        if( preg_match('/^ *([A-Za-z0-9_]+).*/', $value, $matches) == 0 )
-            error_out(400,"UniqueArg '$key' has an improper value. Must start with the column type.");
-
-        $fields .= ",$key";
-        if( array_search(strtolower($matches[1]), $numeric_types) === FALSE )
-            $values .= ",'".(isset($cleaned_data[$key]) ? $cleaned_data[$key] : "")."'";
-        else
-            $values .= ",".((isset($cleaned_data[$key]) && is_numeric($cleaned_data[$key])) ? $cleaned_data[$key] : 0);
-    }
-    $insert_event = "INSERT INTO event ($fields) VALUES ($values)";
+    $fields = "event_type, email, category, dt_created, dt_received, mailing_id, job_id, queue_id, instance, install_class, servername, is_test";
+    $values = "'$event','$email','$category','$timestamp', NOW(), $mailing_id, $job_id, $queue_id, '$instance', '$install_class', '$servername', $is_test";
+    $insert_event = "INSERT INTO incoming ($fields) VALUES ($values)";
 
     // Build the event specific insert statement. Make sure to supply a default
     // value for each one of these fields because we may have previously issued
@@ -121,8 +113,8 @@ function create_event($config, $data, $db) {
         case 'delivered': $insert_type .= "(event_id, response, smtp_id) VALUES (@event_id, '$response', '$smtp_id')"; break;
         case 'dropped': $insert_type .= "(event_id, reason , smtp_id) VALUES (@event_id, '$reason', '$smtp_id')"; break;
         case 'processed': $insert_type .= "(event_id, smtp_id) VALUES (@event_id,'$smtp_id')"; break;
-        case 'open':
-        case 'spamreport':
+        case 'open': //fall through to next case
+        case 'spamreport': //fall through to next case
         case 'unsubscribe': $insert_type .= "(event_id) VALUES (@event_id)"; break;
     };
 
@@ -143,45 +135,16 @@ function create_event($config, $data, $db) {
 
 
 function load_config($config_file) {
-    //Ensure that the configuration file has a database section, all other
-    //sections are optional and we'll supply sane defaults instead
-    $config_constraints = array(
-        'database' => array(
-            'required' => true,
-            'defaults' => array()
-        ),
-        'debug' => array(
-            'required' => false,
-            'defaults' => array('debug_level'=>1)
-        ),
-        'extracolumns' => array(
-            'required' => false,
-            'defaults' => array()
-        ),
-        'uniqueargs' => array(
-            'required' => false,
-            'defaults' => array()
-        ),
-    );
-
     // If we can't find and load the configuration file just die immediately
     // SendGrid will put the event into a deferred queue and try again later
     if( !$config = parse_ini_file($config_file,true) )
         error_out(500,"Configuration file not found at '$config_file'.");
 
-    // Enforce the constraints and throw errors as necessary, in the future it
-    // would probably be better to accumulate configuration errors and die after
-    // they have all been generated.
-    foreach($config_constraints as $section => $constraints) {
-        if(!array_key_exists($section, $config)) {
-            if($constraints['required'])
-                _log(500,"Invalid config file. '$section' section required");
-            else
-                $config[$section] = array();
-        }
-
-        $config[$section] = array_merge($constraints['defaults'],$config[$section]);
-    }
+    if(!array_key_exists('database',$config))
+        _log(500,"Invalid config file. '$section' section required");
+    
+    if (!array_key_exists('debug',$config))
+        $config['debug'] = array('debug_level'=>1);
 
     return $config;
 }
@@ -212,22 +175,23 @@ function log_($debug_level, $message) {
 
     $date = date('Y-m-d H:i:s');
 
-    //Log to the filesystem
+    //Log to a debug file
     if( $filepath=get_default('log_file', $debug_config, false) ) {
-        if( $handle = fopen($filepath,'a') ) {
+        if ( $handle = fopen($filepath,'a') ) {
             fwrite($handle, "$date [$debug_level] $message\n");
             fclose($handle);
         } else {
+            //If the specified file can't be found log it to apache
             error_log("[statserver] Could not open '$filepath' for writing.");
-            if($debug_level == 'ERROR')
+            if($debug_level == 'ERROR') {
                  error_log("[statserver] $message");
+             }
         }
-    }
 
-    //Log to the database
-    //$safe_message = mysql_real_escape_string($message);
-    //exec_query("INSERT INTO log (dt_logged, debug_level, message)
-    //            VALUES (NOW(), '$debug_level', '$safe_message')");
+    //Or log to apache
+    } else {
+        error_log("[statserver] $date [$debug_level] $message\n");
+    }
 }
 
 function exec_query($sql) {
