@@ -84,7 +84,6 @@ CREATE TABLE archive (
     FOREIGN KEY (message_id) REFERENCES message(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
--- TODO: set the auto increment KEY
 CREATE TABLE incoming (
   event_id int(10) unsigned NOT NULL PRIMARY KEY AUTO_INCREMENT,
   email varchar(255) DEFAULT NULL,
@@ -112,7 +111,12 @@ CREATE TABLE incoming (
   KEY (dt_created),
   KEY (dt_received),
   KEY (is_test)
-) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci; -- Currently 20530724
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+-- Assign the autoincrement id appropriately
+SELECT @stmt := CONCAT("ALTER TABLE incoming AUTO_INCREMENT = ", max(id)+1) FROM event;
+PREPARE transfer_auto_inc FROM @stmt;
+EXECUTE transfer_auto_inc;
 
 DROP VIEW IF EXISTS events;
 CREATE VIEW events AS
