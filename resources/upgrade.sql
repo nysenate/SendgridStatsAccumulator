@@ -86,7 +86,7 @@ CREATE TABLE archive (
 
 -- TODO: set the auto increment KEY
 CREATE TABLE incoming (
-  id int(10) unsigned NOT NULL PRIMARY KEY AUTO_INCREMENT,
+  event_id int(10) unsigned NOT NULL PRIMARY KEY AUTO_INCREMENT,
   email varchar(255) DEFAULT NULL,
   category varchar(255) DEFAULT NULL,
   event_type ENUM('processed','bounce','open','delivered','click','spamreport','dropped','deferred','unsubscribe'),
@@ -116,7 +116,7 @@ CREATE TABLE incoming (
 
 DROP VIEW IF EXISTS events;
 CREATE VIEW events AS
-SELECT  a.event_id as id,
+SELECT  a.event_id,
         a.email,
         m.category,
         a.event_type,

@@ -15,7 +15,7 @@ CREATE TABLE summary (
 
 -- TODO: set the auto increment KEY
 CREATE TABLE incoming (
-  id int(10) unsigned NOT NULL PRIMARY KEY AUTO_INCREMENT,
+  event_id int(10) unsigned NOT NULL PRIMARY KEY AUTO_INCREMENT,
   email varchar(255) DEFAULT NULL,
   category varchar(255) DEFAULT NULL,
   event_type ENUM('processed','bounce','open','delivered','click','spamreport','dropped','deferred','unsubscribe'),
