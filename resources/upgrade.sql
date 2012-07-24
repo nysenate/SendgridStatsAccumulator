@@ -30,9 +30,9 @@ alter table message convert to character set utf8 collate utf8_unicode_ci;
 --   dt_processed: lets us know when
 --   result: lets us know what happened
 --
-drop table if exists archive;
-drop table if exists message;
-drop table if exists instance;
+DROP TABLE IF EXISTS archive;
+DROP TABLE IF EXISTS message;
+DROP TABLE IF EXISTS instance;
 
 CREATE TABLE instance (
     id int unsigned PRIMARY KEY auto_increment,
@@ -113,5 +113,25 @@ CREATE TABLE incoming (
   KEY (dt_received),
   KEY (is_test)
 ) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci; -- Currently 20530724
+
+DROP VIEW IF EXISTS events;
+CREATE VIEW events AS
+SELECT  a.event_id as id,
+        a.email,
+        m.category,
+        a.event_type,
+        m.mailing_id,
+        a.queue_id,
+        i.name as instance,
+        i.install_class,
+        i.servername,
+        i.result,
+        a.dt_created,
+        a.dt_received,
+        a.dt_processed,
+        a.is_test
+FROM `archive` a
+JOIN `message` m ON `a`.`message_id`=`m`.`id`
+JOIN `instance` i ON `m`.`instance_id`=`i`.`id`;
 
 COMMIT;
