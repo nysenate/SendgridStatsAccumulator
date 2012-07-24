@@ -78,8 +78,6 @@ BEGIN
         SET num_rows = num_rows - BATCH_SIZE;
     END;
     END WHILE;
-
-    TRUNCATE TABLE event;
 END$$
 
 # returnInstance
