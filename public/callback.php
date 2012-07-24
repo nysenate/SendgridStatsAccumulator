@@ -7,17 +7,17 @@ $config = load_config($config_path);
 //Log the request parameters, encoded as a string for replication (curl)
 $db = get_db_connection();
 
-if(strpos($_SERVER['CONTENT_TYPE'],'application/json') !== FALSE) {
+if(isset($_SERVER['CONTENT_TYPE']) && strpos($_SERVER['CONTENT_TYPE'],'application/json') !== FALSE) {
     //Process the batched data, separated json objects by new lines
     $batchData = file("php://input", FILE_IGNORE_NEW_LINES|FILE_SKIP_NEW_LINES);
     log_("NOTICE",mysql_real_escape_string(print_r($batchData,true)));
     foreach($batchData as $jsonData) {
         create_event($config, json_decode($jsonData, true), $db);
     }
-} else if ($_SERVER['REQUEST_METHOD']=='POST') {
+} else if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD']=='POST') {
     log_("NOTICE",mysql_real_escape_string(http_build_query($_POST),$db));
     create_event($config, $_POST, $db);
-} else if ($_SERVER['REQUEST_METHOD']=='GET') {
+} else if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD']=='GET') {
     log_("NOTICE",mysql_real_escape_string(http_build_query($_GET),$db));
     create_event($config, $_GET, $db);
 } else {
