@@ -148,3 +148,7 @@ END$$
 DELIMITER ;
 
 call archiveEvents();
+
+DROP PROCEDURE IF EXISTS archiveEvents;
+DROP FUNCTION IF EXISTS returnInstance;
+DROP FUNCTION IF EXISTS returnMessage;
