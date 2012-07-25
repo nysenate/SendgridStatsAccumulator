@@ -11,10 +11,15 @@ ALTER TABLE `processed` DROP FOREIGN KEY `processed_ibfk_1`;
 ALTER TABLE `spamreport` DROP FOREIGN KEY `spamreport_ibfk_1`;
 ALTER TABLE `unsubscribe` DROP FOREIGN KEY `unsubscribe_ibfk_1`;
 
--- Queries for the event table transform
-ALTER TABLE event CONVERT TO CHARACTER SET utf8 COLLATE utf8_unicode_ci;
-alter table instance convert to character set utf8 collate utf8_unicode_ci;
-alter table message convert to character set utf8 collate utf8_unicode_ci;
+ALTER TABLE bounce ADD INDEX (event_id);
+ALTER TABLE click ADD INDEX (event_id);
+ALTER TABLE deferred ADD INDEX (event_id);
+ALTER TABLE delivered ADD INDEX (event_id);
+ALTER TABLE dropped ADD INDEX (event_id);
+ALTER TABLE open ADD INDEX (event_id);
+ALTER TABLE processed ADD INDEX (event_id);
+ALTER TABLE spamreport ADD INDEX (event_id);
+ALTER TABLE unsubscribe ADD INDEX (event_id);
 
 -- New table schemas for long term storage and compression
 -- Introduces two layers of compression from the incoming table
@@ -30,10 +35,6 @@ alter table message convert to character set utf8 collate utf8_unicode_ci;
 --   dt_processed: lets us know when
 --   result: lets us know what happened
 --
-DROP TABLE IF EXISTS archive;
-DROP TABLE IF EXISTS message;
-DROP TABLE IF EXISTS instance;
-
 CREATE TABLE instance (
     id int unsigned PRIMARY KEY auto_increment,
     install_class ENUM('prod','test','dev'),
