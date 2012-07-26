@@ -159,11 +159,11 @@ CREATE TABLE message (
 
 
 CREATE TABLE archive (
-    id int unsigned PRIMARY KEY auto_increment,
+    event_id int unsigned PRIMARY KEY auto_increment,
     message_id int unsigned COMMENT 'Ties request back to the specific instance-mailing.',
     job_id int unsigned COMMENT 'Marks which subjob of a mailing made the request',
     queue_id int unsigned COMMENT 'Instance-unique id assigned by bluebird.',
-    type ENUM('processed','bounce','open','delivered','click','spamreport','dropped','deferred','unsubscribe'),
+    event_type ENUM('processed','bounce','open','delivered','click','spamreport','dropped','deferred','unsubscribe'),
     result ENUM('FAILED','SKIPPED','ARCHIVED'),
     email varchar(255),
     is_test boolean,
