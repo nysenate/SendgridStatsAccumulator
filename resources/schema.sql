@@ -200,6 +200,75 @@ SELECT  a.event_id as id,
         a.dt_received,
         a.dt_processed,
         a.is_test
-FROM `archive` a
-JOIN `message` m ON `a`.`message_id`=`m`.`id`
-JOIN `instance` i ON `m`.`instance_id`=`i`.`id`;
+FROM archive a
+JOIN message m ON a.message_id=m.id
+JOIN instance i ON m.instance_id=i.id;
+
+
+
+DELIMITER |
+
+  DROP FUNCTION IF EXISTS returnInstance|
+  DROP FUNCTION IF EXISTS returnMessage|
+
+  CREATE FUNCTION returnInstance(in_install_class VARCHAR(8),
+                                 in_servername VARCHAR(255),
+                                 in_name VARCHAR(255)) RETURNS int DETERMINISTIC
+    BEGIN
+
+        DECLARE instance_id INT(11) DEFAULT NULL;
+        DECLARE no_more_rows TINYINT(1);
+        DECLARE instance_cursor CURSOR FOR
+            SELECT id FROM instance
+            WHERE CONVERT(install_class USING utf8)=CONVERT(in_install_class USING utf8)
+              AND CONVERT(servername USING utf8)=CONVERT(in_servername USING utf8)
+              AND CONVERT(name USING utf8)=CONVERT(in_name USING utf8);
+
+        DECLARE CONTINUE HANDLER FOR NOT FOUND SET no_more_rows = TRUE;
+
+        OPEN instance_cursor;
+        FETCH instance_cursor INTO instance_id;
+        CLOSE instance_cursor;
+
+        IF instance_id IS NULL THEN
+            INSERT INTO instance(install_class, servername, name)
+                VALUES(in_install_class, in_servername, in_name);
+            SET instance_id = LAST_INSERT_ID();
+        END IF;
+
+        RETURN instance_id;
+
+    END
+  |
+
+  CREATE FUNCTION returnMessage(in_instance_id INT(11),
+                                in_mailing_id INT(11),
+                                in_category VARCHAR(255)) RETURNS int DETERMINISTIC
+    BEGIN
+
+        DECLARE message_id INT(11) DEFAULT NULL;
+        DECLARE no_more_rows TINYINT(1);
+        DECLARE message_cursor CURSOR FOR
+            SELECT id FROM message
+            WHERE instance_id = in_instance_id
+              AND mailing_id = in_mailing_id
+              AND CONVERT(category USING utf8)=CONVERT(in_category USING utf8);
+
+        DECLARE CONTINUE HANDLER FOR NOT FOUND SET no_more_rows = TRUE;
+
+        OPEN message_cursor;
+        FETCH message_cursor INTO message_id;
+        CLOSE message_cursor;
+
+        IF message_id IS NULL THEN
+            INSERT INTO message(instance_id, mailing_id, category)
+                VALUES(in_instance_id, in_mailing_id, in_category);
+            SET message_id = LAST_INSERT_ID();
+        END IF;
+
+        RETURN message_id;
+
+      END
+  |
+
+DELIMITER ;
