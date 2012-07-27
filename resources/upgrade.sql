@@ -21,6 +21,31 @@ ALTER TABLE processed ADD INDEX (event_id);
 ALTER TABLE spamreport ADD INDEX (event_id);
 ALTER TABLE unsubscribe ADD INDEX (event_id);
 
+DELIMITER |
+
+    DROP TRIGGER IF EXISTS insert_stats_table |
+    CREATE TRIGGER insert_stats_table AFTER INSERT ON incoming
+        FOR EACH ROW BEGIN
+
+            -- If queue_id=0 we don't process the event
+            -- we need to exclude these from summaries.
+            IF NEW.queue_id <> 0 THEN
+
+                INSERT INTO summary(
+                    mailing_id, instance, install_class, event, category, count, dt_first, dt_last
+                ) VALUES (
+                    NEW.mailing_id, NEW.instance, NEW.install_class, NEW.event_type, NEW.category, 1, NEW.dt_created, NEW.dt_created
+                ) ON DUPLICATE KEY UPDATE
+                    count = ( count +1 ),
+                    dt_last = IF( dt_last < NEW.dt_created, NEW.dt_created, dt_last ),
+                    dt_first = IF( dt_first > NEW.dt_created, NEW.dt_created, dt_first );
+
+            END IF;
+        END
+    |
+
+DELIMITER ;
+
 -- New table schemas for long term storage and compression
 -- Introduces two layers of compression from the incoming table
 --   Instance: Compresses repetition from servername, instance, and install_class
