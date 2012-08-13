@@ -155,4 +155,9 @@ function log_($debug_level, $message) {
         error_log("[statserver] $date [$debug_level] $message\n");
     }
 }
+
+function get_default($key, $data, $default) {
+    //Also check for the '' because we might want to default that to 0
+    return (isset($data[$key]) && $data[$key] != '') ? $data[$key] : $default;
+}
 ?>
