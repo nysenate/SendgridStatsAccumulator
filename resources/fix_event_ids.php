@@ -35,6 +35,9 @@ exec_queries(array(
 
 $result = mysql_query("SELECT * FROM incoming_innodb", $db);
 while ($row = mysql_fetch_assoc($result)) {
+    foreach($row as $key => $value) {
+        $row[$key] = mysql_real_escape_string($value, $db);
+    }
     exec_queries(array(
         "SET autocommit=0",
         "begin",
