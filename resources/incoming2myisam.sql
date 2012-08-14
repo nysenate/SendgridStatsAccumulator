@@ -34,7 +34,7 @@ SELECT @stmt := CONCAT("ALTER TABLE incoming AUTO_INCREMENT = ", max(event_id)+1
 PREPARE transfer_auto_inc FROM @stmt;
 EXECUTE transfer_auto_inc;
 
-INSERT INTO incoming (email, category, event_Type, mailing_id, job_id, queue_id, instance, install_class, servername, dt_created, dt_received, is_test)
-	SELECT email, category, event_Type, mailing_id, job_id, queue_id, instance, install_class, servername, dt_created, dt_received, is_test FROM incoming_innodb;
+-- INSERT INTO incoming (email, category, event_Type, mailing_id, job_id, queue_id, instance, install_class, servername, dt_created, dt_received, is_test)
+-- SELECT email, category, event_Type, mailing_id, job_id, queue_id, instance, install_class, servername, dt_created, dt_received, is_test FROM incoming_innodb;
 
 -- drop table incoming_innodb
