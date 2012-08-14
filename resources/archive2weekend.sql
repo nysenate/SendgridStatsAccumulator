@@ -22,12 +22,13 @@ FROM archive a
 JOIN message m ON a.message_id=m.id
 JOIN instance i ON m.instance_id=i.id;
 
+
 BEGIN;
 
 INSERT INTO weekend_events
-	(email, category, event_type, mailing_id, job_id, queue_id, instance, install_class, servername, dt_created, dt_received, is_test)
+	(event_id, email, category, event_type, mailing_id, job_id, queue_id, instance, install_class, servername, dt_created, dt_received, is_test)
 SELECT
-	email, category, event_type, mailing_id, job_id, queue_id, instance, install_class, servername, dt_created, dt_received, is_test
+	event_id, email, category, event_type, mailing_id, job_id, queue_id, instance, install_class, servername, dt_created, dt_received, is_test
 FROM events WHERE dt_processed > @start_date AND dt_processed < @end_date;
 
 DELETE FROM archive WHERE dt_processed > @start_date AND dt_processed < @end_date;
