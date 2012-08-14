@@ -186,12 +186,12 @@ CREATE TABLE archive (
 
 DROP VIEW IF EXISTS events;
 CREATE VIEW events AS
-SELECT  a.event_id as id,
+SELECT  a.event_id,
         a.email,
         m.category,
         a.event_type,
         m.mailing_id,
-        m.job_id,
+        a.job_id,
         a.queue_id,
         i.name as instance,
         i.install_class,

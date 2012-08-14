@@ -3,7 +3,7 @@ SET @end_date := '2012-08-13 12:33:00';
 
 DROP VIEW IF EXISTS events;
 CREATE VIEW events AS
-SELECT  a.event_id as id,
+SELECT  a.event_id,
         a.email,
         m.category,
         a.event_type,
