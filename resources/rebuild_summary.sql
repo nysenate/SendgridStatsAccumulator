@@ -11,7 +11,7 @@ REPLACE INTO summary (
       AND mailing_id != 0
       AND instance.servername != ''
     ) AS affected_messages USING (message_id)
-  WHERE queue_id != 0 AND is_test != 0
+  WHERE queue_id != 0 AND is_test = 0
   GROUP BY instance_name, install_class, mailing_id, event_type
 );
 

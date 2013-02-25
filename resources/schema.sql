@@ -103,7 +103,7 @@ DELIMITER |
 
             -- If queue_id=0 we don't process the event
             -- we need to exclude these from summaries.
-            IF NEW.queue_id <> 0 AND NEW.is_test <> 0 THEN
+            IF NEW.queue_id <> 0 AND NEW.is_test = 0 THEN
 
                 INSERT INTO summary(
                     mailing_id, instance, install_class, event, category, count, dt_first, dt_last
