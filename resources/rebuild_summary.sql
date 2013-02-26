@@ -6,7 +6,7 @@ REPLACE INTO summary (
     FROM message
       JOIN instance ON message.instance_id=instance.id
       JOIN archive ON archive.message_id=message.id
-    WHERE archive.dt_created > '2012-07-24 12:00:00'
+    WHERE archive.dt_created > '2013-01-01 12:00:00'
       AND archive.queue_id != 0
       AND mailing_id != 0
       AND instance.servername != ''
