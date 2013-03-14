@@ -48,7 +48,7 @@ CREATE TABLE bounce (
     reason text,
     type varchar(20),
     status varchar(8),
-    smtp_id varchar(255),
+    smtp_id varchar(255)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 CREATE TABLE click (
@@ -72,7 +72,7 @@ CREATE TABLE delivered (
 CREATE TABLE dropped (
     event_id int(10) unsigned PRIMARY KEY,
     reason varchar(255),
-    smtp_id varchar(255),
+    smtp_id varchar(255)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 CREATE TABLE open (
@@ -174,7 +174,7 @@ CREATE TABLE archive (
     KEY (message_id),
     KEY (job_id),
     KEY (queue_id),
-    KEY (type),
+    KEY (event_type),
     KEY (result),
     KEY (email),
     KEY (is_test),
