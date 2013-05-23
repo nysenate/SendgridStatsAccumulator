@@ -4,6 +4,39 @@ if (!isset($_SESSION['groups'])) {
   die("You are not authorized to view this page.");
 }
 require_once('summary.php');
+require_once('tc_calendar.php');
+
+$fm_date_start = date('Y-m-d', strtotime('-4 week'));
+$fm_date_end = date('Y-m-d');
+$fm_instance = '';
+
+if (isset($_POST['fm_date_start'])) {
+  $fm_date_start = $_POST['fm_date_start'];
+}
+if (isset($_POST['fm_date_end'])) {
+  $fm_date_end = $_POST['fm_date_end'];
+}
+if (isset($_POST['fm_instance'])) {
+  $fm_instance = $_POST['fm_instance'];
+}
+
+// Get an array of all instances that the logged in user is allowed to see.
+$instanceList = getInstances($_SESSION['config'], $_SESSION['groups']);
+
+
+function generateCalendarScript($name, $default_date)
+{
+  $myCalendar = new tc_calendar($name, true, false);
+  $myCalendar->setIcon("images/iconCalendar.gif");
+  $myCalendar->setDate(date('d', strtotime($default_date)),
+                       date('m', strtotime($default_date)),
+                       date('Y', strtotime($default_date)));
+  $myCalendar->setPath("/stats/");
+  $myCalendar->setYearInterval(1970, 2020);
+  $myCalendar->setAlignment('left', 'bottom');
+  $myCalendar->setDatePair('fm_date_start', 'fm_date_end', $default_date);
+  $myCalendar->writeScript();
+} // generateCalendarScript()
 ?>
 <html>
 <head>
@@ -45,69 +78,62 @@ Sendgrid Stats
 
 <div class="header">
 Sendgrid Accumulator Stats
-<form action="stats.php" method="post">
+
+<form action="" method="post">
+<div style="float:left; padding:10px;">
+<div style="float:left;">From:</div>
+<?php generateCalendarScript('fm_date_start', $fm_date_start);?>
+</div>
+
+<div style="float:left; padding:10px;">
+<div style="float:left;">To:</div>
+<?php generateCalendarScript('fm_date_end', $fm_date_end);?>
+</div>
+
+<div style="float:left; padding:10px;">
+<select name="fm_instance">
+<option value="">All Available Senators</option>
 <?php
-//get class into the page
-
-require_once('tc_calendar.php');
-
-//instantiate class and set properties
-$date4_default = (isset($_POST['date4']) ? $_POST['date4'] : date('Y-m-d')); 
-$date3_default = (isset($_POST['date3']) ? $_POST['date3'] : date('Y-m-d', strtotime('-4 week'))); 
-
-$myCalendar = new tc_calendar("date3", true, false);
-$myCalendar->setIcon("images/iconCalendar.gif");
-$myCalendar->setDate(date('d', strtotime($date3_default)),
-                     date('m', strtotime($date3_default)),
-                     date('Y', strtotime($date3_default)));
-$myCalendar->setPath("/stats/");
-$myCalendar->setYearInterval(1970, 2020);
-$myCalendar->setAlignment('left', 'bottom');
-$myCalendar->setDatePair('date3', 'date4', $date4_default);
-print('<div style="float:left; padding:10px;"><div style="float:left;">From: </div>');
-$myCalendar->writeScript();
-print('</div>');
-
-$myCalendar = new tc_calendar("date4", true, false);
-$myCalendar->setIcon("images/iconCalendar.gif");
-$myCalendar->setDate(date('d', strtotime($date4_default)),
-                     date('m', strtotime($date4_default)),
-                     date('Y', strtotime($date4_default)));
-$myCalendar->setPath("/stats/");
-$myCalendar->setYearInterval(1970, 2020);
-$myCalendar->setAlignment('left', 'bottom');
-$myCalendar->setDatePair('date3', 'date4', $date3_default);
-print('<div style="float:left; padding:10px;"><div style="float:left;">To: </div>');
-$myCalendar->writeScript();
-print('</div>');
+foreach ($instanceList as $instance) {
+  $flag = $fm_instance == $instance ? "selected" : "";
+  echo "<option value=\"$instance\" $flag>".ucfirst($instance)."</option>\n";
+}
 ?>
+</select>
+</div>
+
 <input type="submit" style="float:left; margin-left:25px; margin-top:7px;" />
 </form>
+
 <form action="logout.php" method="post">
   <input type="hidden" name="doLogout" value="1">
   <input type="submit" value="Log Out" style="float:left; margin-left:25px; margin-top:7px;">
 </form>
+
 </div>
 
 <div class="dateRange">
-    <span>
-    <?php print('Current Query Begins: '. $date3_default);?>
-    </span>
-    <span>
-    <?php print('and Ends: '. $date4_default);?>
-    </span>
+<span><?php print('Current Query Begins: '. $fm_date_start);?></span>
+<span><?php print('and Ends: '. $fm_date_end);?></span>
 </div>
+
 <!-- kz debugging: group list for logged in user
 <?php
   print_r($_SESSION['groups']);
 ?>
 -->
 <?php
-  $instanceList = getInstances($_SESSION['config'], $_SESSION['groups']);
-  displayStats($_SESSION['config'], $instanceList);
+  if ($fm_instance && in_array($fm_instance, $instanceList)) {
+    $instances = array($fm_instance);
+  }
+  else {
+    $instances = $instanceList;
+  }
+  displayStats($_SESSION['config'], $instances, $fm_date_start, $fm_date_end);
 ?>
 <script>
 getAllSenatorTotal();
 </script>
+
 </body>
 </html>
