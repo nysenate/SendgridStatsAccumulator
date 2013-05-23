@@ -33,7 +33,7 @@ function getInstances($cfg, $groups)
 
 
 
-function displayStats($cfg, $instances)
+function displayStats($cfg, $instances, $dt_start, $dt_end)
 {
   $dbhost = $cfg['database']['host'].":".$cfg['database']['port'];
   $dbuser = $cfg['database']['user'];
@@ -48,9 +48,6 @@ function displayStats($cfg, $instances)
   if (!mysql_select_db($dbname)) {
     die("Unable to select database [$dbname]");
   }
-
-  $date4_default = (isset($_POST['date4']) ? $_POST['date4'] : date('Y-m-d'));
-  $date3_default = (isset($_POST['date3']) ? $_POST['date3'] : date('Y-m-d', strtotime('-4 week'))); 
 
   // Generate SQL for the list of instances to be viewed.
   $instance_in = '';
@@ -70,8 +67,8 @@ function displayStats($cfg, $instances)
     where summ.install_class='prod'
       and summ.event = 'processed' 
     GROUP by instance, mailing_id
-    HAVING start >= '".$date3_default." 00:00:00'
-       and start <= '".$date4_default." 23:59:59'
+    HAVING start >= '".$dt_start." 00:00:00'
+       and start <= '".$dt_end." 23:59:59'
   ) AS mailing
   USING (instance,mailing_id)
   where install_class='prod' and instance in(".$instance_in.")
