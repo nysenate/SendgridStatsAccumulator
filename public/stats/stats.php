@@ -34,7 +34,7 @@ function generateCalendarScript($name, $default_date)
   $myCalendar->setPath("/stats/");
   $myCalendar->setYearInterval(1970, 2020);
   $myCalendar->setAlignment('left', 'bottom');
-  $myCalendar->setDatePair('fm_date_start', 'fm_date_end', $default_date);
+  $myCalendar->setDatePair('fm_date_start', 'fm_date_end');
   $myCalendar->writeScript();
 } // generateCalendarScript()
 ?>
