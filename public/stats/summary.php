@@ -2,15 +2,15 @@
 error_reporting(E_ERROR);
 
 $eventTypes = array(
-        'processed' => 'Processed',
-        'delivered' => 'Delivered',
-        'dropped' => 'Dropped',
-        'deferred' => 'Deferred',
-        'bounce' => 'Bounced',
-        'open' => 'Opened',
-        'click' => 'Clicked',
-        'spamreport' => 'Spamreport',
-        'unsubscribe' => 'Unsubscribed'
+    'processed' => array('label'=>'Processed', 'width'=>70, 'rate'=>false),
+    'delivered' => array('label'=>'Delivered', 'width'=>70, 'rate'=>false),
+    'dropped' => array('label'=>'Dropped', 'width'=>70, 'rate'=>false),
+    'deferred' => array('label'=>'Deferred', 'width'=>70, 'rate'=>false),
+    'bounce' => array('label'=>'Bounced', 'width'=>70, 'rate'=>false),
+    'open' => array('label'=>'Opened', 'width'=>95, 'rate'=>true),
+    'click' => array('label'=>'Clicked', 'width'=>70, 'rate'=>false),
+    'spamreport' => array('label'=>'Spamreps', 'width'=>65, 'rate'=>false),
+    'unsubscribe' => array('label'=>'Unsubs', 'width'=>65, 'rate'=>false)
 );
 
 
@@ -96,18 +96,25 @@ function displayStats($cfg, $instances, $dt_start, $dt_end)
 
 
 //Prints the individual items of 'bounce, click'... etc in a smaller package.
-function displayEventStats($events, $outputClass)
+function displayEventStats($events)
 {
   global $eventTypes;
 
   //this is the order of array amounts, individual changes &/or additions could be added as if statements in the foreach
-  foreach ($eventTypes as $eventType => $eventName) {
-    print('<div class="item">'); 
+  foreach ($eventTypes as $eventType => $eventInfo) {
+    $label = $eventInfo['label'];
+    $width = $eventInfo['width'];
+    $showRate = $eventInfo['rate'];
+
+    print("<div class=\"item\" style=\"width:${width}px;\">"); 
     print('<div>');
-    print($eventName);
+    print($label);
     print('</div>');
-    print('<div class="'.$eventType.' '.$outputClass.'">'); 
+    print("<div class=\"$eventType\">"); 
     print($events[$eventType]);
+    if ($showRate) {
+      print(" (".round(100*$events[$eventType]/$events['delivered'], 1)."%)");
+    }
     print('</div>');
     print('</div>'); 
   }
@@ -134,7 +141,7 @@ function displaySenatorStats($mailings, $senator)
            <div class="text">'. $row['category'] .'</div>
            </div>');
     $stats = array();
-    foreach ($eventTypes as $eventType => $eventName) {
+    foreach (array_keys($eventTypes) as $eventType) {
       if (isset($mailing[$eventType]['count'])) {
         $stats[$eventType] = $mailing[$eventType]['count'];
       }
@@ -143,12 +150,12 @@ function displaySenatorStats($mailings, $senator)
       }
       $totals[$eventType] += $stats[$eventType];
     }
-    displayEventStats($stats, 'value');
+    displayEventStats($stats);
     print('</div>');
   }
 
   print('<div class="date"><div class="mailingID"><div>Mailing ID: Total</div></div>');
-  displayEventStats($totals, 'total');
+  displayEventStats($totals);
   print('</div>');
   print('</div>');
 } // displaySenatorStats()
