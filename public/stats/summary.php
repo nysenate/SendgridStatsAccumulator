@@ -33,7 +33,7 @@ function getInstances($cfg, $groups)
 
 
 
-function displayStats($cfg, $instances, $dt_start, $dt_end)
+function getStats($cfg, $instances, $dt_start, $dt_end)
 {
   $dbhost = $cfg['database']['host'].":".$cfg['database']['port'];
   $dbuser = $cfg['database']['user'];
@@ -59,34 +59,67 @@ function displayStats($cfg, $instances, $dt_start, $dt_end)
   }
 
   $q = "
-  select instance, category, summary.mailing_id, event, count, dt_first, dt_last
-  from summary 
-  join (
-    select DISTINCT summ.instance, mailing_id, MIN(summ.dt_first) AS start
-    from summary as summ
-    where summ.install_class='prod'
-      and summ.event = 'processed' 
-    GROUP by instance, mailing_id
+  SELECT instance, category, summary.mailing_id, event, count, dt_first
+  FROM summary
+  JOIN (
+    SELECT DISTINCT summ.instance, mailing_id, MIN(summ.dt_first) AS start
+    FROM summary AS summ
+    WHERE summ.install_class='prod'
+      AND summ.event = 'processed'
+    GROUP BY instance, mailing_id
     HAVING start >= '".$dt_start." 00:00:00'
-       and start <= '".$dt_end." 23:59:59'
+       AND start <= '".$dt_end." 23:59:59'
   ) AS mailing
-  USING (instance,mailing_id)
-  where install_class='prod' and instance in(".$instance_in.")
-  group by instance, mailing_id, event
-  order by instance ASC, mailing_id DESC;";
+  USING (instance, mailing_id)
+  WHERE install_class='prod' AND instance IN (".$instance_in.")
+  GROUP BY instance, mailing_id, event
+  ORDER BY instance ASC, mailing_id DESC;";
 
   $res = mysql_query($q, $dbcon);
 
-  $data = array();
+  $stats = array();
+
   while ($row = mysql_fetch_assoc($res)) {
-    $data[$row['instance']][$row['mailing_id']][$row['event']] = $row;
+    $inst = $row['instance'];
+    $mid = $row['mailing_id'];
+    $ev = $row['event'];
+    $cnt = $row['count'];
+    $cat = $row['category'];
+    $dt = $row['dt_first'];
+
+    if (isset($stats[$inst][$mid])) {
+      $stats[$inst][$mid]['events'][$ev] = $cnt;
+    }
+    else {
+      $stats[$inst][$mid] = array('events' => array($ev=>$cnt),
+                                  'category' => $cat,
+                                  'date' => $dt);
+    }
   }
 
+  mysql_close($dbcon);
+  return $stats;
+} // getStats()
+
+
+
+function displayStats($stats)
+{
   // Confirm that there is at least one senator/mailing/event.
-  if (count($data) > 0) {
-    foreach (array_keys($data) as $senator) {
-      displaySenatorStats($data[$senator], $senator);
+  if (count($stats) > 0) {
+    $event_totals = array();
+    foreach ($stats as $senator => $mailings) {
+      $event_counts = displaySenatorStats($senator, $mailings);
+      foreach ($event_counts as $event_type => $event_count) {
+        $event_totals[$event_type] += $event_count;
+      }
     }
+
+    print("<div class=\"result\">\n<div class=\"senatorName\">Total</div>\n");
+    print("<div class=\"date\">\n");
+    print('<div class="mailingID"><div>Totals</div><div class="text">Amongst All Senators</div></div>'."\n");
+    displayEventStats($event_totals);
+    print("</div>\n</div>\n");
   }
   else {
     print('<div class="noData">No Data Found</div>');
@@ -95,7 +128,44 @@ function displayStats($cfg, $instances, $dt_start, $dt_end)
 
 
 
-//Prints the individual items of 'bounce, click'... etc in a smaller package.
+function displaySenatorStats($senator, $mailings)
+{
+  global $eventTypes;
+
+  print("<div class=\"result\">\n<div class=\"senatorName\">$senator</div>\n");
+  $totals = array();
+
+  foreach ($mailings as $mailing_id => $mailing) {
+    $events = $mailing['events'];
+    $category = $mailing['category'];
+    $dt_first_time = strtotime($mailing['date']);
+    $dt_first_date = date('m-d-y', $dt_first_time);
+    print("<div class=\"date\">\n");
+    print('<div class="mailingID"><div>Mailing ID: '.$mailing_id.'</div><div class="text" style="margin:3px 0;"><span style="font-weight:bold">Submission Date: </span>'. $dt_first_date .'</div><div class="text">'.$category.'</div></div>'."\n");
+
+    $stats = array();
+    foreach (array_keys($eventTypes) as $eventType) {
+      if (isset($events[$eventType])) {
+        $stats[$eventType] = $events[$eventType];
+      }
+      else {
+        $stats[$eventType] = 0;
+      }
+      $totals[$eventType] += $stats[$eventType];
+    }
+    displayEventStats($stats);
+    print("</div>\n");
+  }
+
+  print("<div class=\"date\">\n");
+  print('<div class="mailingID"><div>Mailing ID: Total</div></div>'."\n");
+  displayEventStats($totals);
+  print("</div>\n</div>\n");
+  return $totals;
+} // displaySenatorStats()
+
+
+
 function displayEventStats($events)
 {
   global $eventTypes;
@@ -106,58 +176,14 @@ function displayEventStats($events)
     $width = $eventInfo['width'];
     $showRate = $eventInfo['rate'];
 
-    print("<div class=\"item\" style=\"width:${width}px;\">"); 
-    print('<div>');
-    print($label);
-    print('</div>');
-    print("<div class=\"$eventType\">"); 
+    print("<div class=\"item\" style=\"width:${width}px;\">");
+    print("<div>$label</div><div class=\"$eventType\">");
     print($events[$eventType]);
     if ($showRate) {
       print(" (".round(100*$events[$eventType]/$events['delivered'], 1)."%)");
     }
-    print('</div>');
-    print('</div>'); 
+    print("</div></div>\n");
   }
 } // displayEventStats()
-
-
-
-//collates and arranges the data and provides the sum of amounts as it traverses the array
-function displaySenatorStats($mailings, $senator)
-{
-  global $eventTypes;
-
-  print('<div class="result">');
-  print('<div class="senatorName">'.$senator.'</div>');
-  $totals = array();
-  foreach ($mailings as $mailing) {
-    // Retrieve one of the event rows for this mailing.
-    $row = reset($mailing);
-    $dt_first_time = strtotime($row['dt_first']);
-    $dt_first_date = date('m-d-y', $dt_first_time);
-    print('<div class="date"><div class="mailingID">
-           <div>Mailing ID: ' . $row['mailing_id'] .' </div>
-           <div class="text" style="margin:3px 0;"><span style="font-weight:bold">Submission Date: </span>'. $dt_first_date .'</div>
-           <div class="text">'. $row['category'] .'</div>
-           </div>');
-    $stats = array();
-    foreach (array_keys($eventTypes) as $eventType) {
-      if (isset($mailing[$eventType]['count'])) {
-        $stats[$eventType] = $mailing[$eventType]['count'];
-      }
-      else {
-        $stats[$eventType] = 0;
-      }
-      $totals[$eventType] += $stats[$eventType];
-    }
-    displayEventStats($stats);
-    print('</div>');
-  }
-
-  print('<div class="date"><div class="mailingID"><div>Mailing ID: Total</div></div>');
-  displayEventStats($totals);
-  print('</div>');
-  print('</div>');
-} // displaySenatorStats()
 
 ?>
