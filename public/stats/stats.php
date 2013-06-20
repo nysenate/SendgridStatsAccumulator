@@ -5,6 +5,7 @@ if (!isset($_SESSION['groups'])) {
 }
 require_once('summary.php');
 require_once('tc_calendar.php');
+define('USE_JAVASCRIPT_TOTALS', false);
 
 $fm_date_start = date('Y-m-d', strtotime('-4 week'));
 $fm_date_end = date('Y-m-d');
@@ -38,20 +39,25 @@ function generateCalendarScript($name, $default_date)
   $myCalendar->writeScript();
 } // generateCalendarScript()
 ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html>
 <head>
+<meta content="text/html;charset=utf-8" http-equiv="Content-Type"/>
+<meta content="utf-8" http-equiv="encoding"/>
 <link href="stats.css" rel="stylesheet" type="text/css"/>
 <link href="calendar.css" rel="stylesheet" type="text/css"/>
 <script language="javascript" src="calendar.js"></script>
+<?php
+if (USE_JAVASCRIPT_TOTALS) {
+?>
 <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js">
 </script>
 <script>
-/*written in jquery to run post-load*/
 function getAllSenatorTotal()
 {
   document.write('<div class="result"><div class="senatorName">Total</div><div class="date"><div class="mailingID"><div>Totals</div><div class="text">Amongst All Senators</div></div>');
     var arrayTypes = new Array("processed","delivered","dropped","deferred","bounce","open","click","spamreport","unsubscribe");
-    for (var i=0;i < arrayTypes.length; i++)
+    for (var i = 0; i < arrayTypes.length; i++)
     {
       var itemProcessed = new Array();
       var selectorName = '.item .'+arrayTypes[i]+'.total';
@@ -59,7 +65,7 @@ function getAllSenatorTotal()
         itemProcessed[i] = $(this).html();
       })
       var itemProcessedTotal = 0;
-      for (var j=0;j < itemProcessed.length; j++)
+      for (var j = 0; j < itemProcessed.length; j++)
       {
         itemProcessedTotal += parseInt(itemProcessed[j]);     
       }
@@ -69,6 +75,9 @@ function getAllSenatorTotal()
   document.write('</div></div></div>');
 }
 </script>
+<?php
+}
+?>
 <title>
 Sendgrid Stats
 </title>
@@ -129,11 +138,17 @@ foreach ($instanceList as $instance) {
   else {
     $instances = $instanceList;
   }
-  displayStats($_SESSION['config'], $instances, $fm_date_start, $fm_date_end);
+  $stats = getStats($_SESSION['config'], $instances, $fm_date_start, $fm_date_end);
+  displayStats($stats);
+?>
+<?php
+if (USE_JAVASCRIPT_TOTALS) {
 ?>
 <script>
 getAllSenatorTotal();
 </script>
-
+<?php
+}
+?>
 </body>
 </html>
