@@ -2,15 +2,15 @@
 error_reporting(E_ERROR);
 
 $eventTypes = array(
-    'processed' => array('label'=>'Processed', 'width'=>70, 'rate'=>false),
-    'delivered' => array('label'=>'Delivered', 'width'=>70, 'rate'=>false),
-    'dropped' => array('label'=>'Dropped', 'width'=>70, 'rate'=>false),
-    'deferred' => array('label'=>'Deferred', 'width'=>70, 'rate'=>false),
-    'bounce' => array('label'=>'Bounced', 'width'=>70, 'rate'=>false),
-    'open' => array('label'=>'Opened', 'width'=>95, 'rate'=>true),
-    'click' => array('label'=>'Clicked', 'width'=>70, 'rate'=>false),
-    'spamreport' => array('label'=>'Spamreps', 'width'=>65, 'rate'=>false),
-    'unsubscribe' => array('label'=>'Unsubs', 'width'=>65, 'rate'=>false)
+    'processed' => array('label'=>'Processed', 'width'=>70, 'rate'=>null),
+    'delivered' => array('label'=>'Delivered', 'width'=>105, 'rate'=>'processed'),
+    'dropped' => array('label'=>'Dropped', 'width'=>65, 'rate'=>null),
+    'deferred' => array('label'=>'Deferred', 'width'=>65, 'rate'=>null),
+    'bounce' => array('label'=>'Bounced', 'width'=>80, 'rate'=>'processed'),
+    'open' => array('label'=>'Opened', 'width'=>95, 'rate'=>'delivered'),
+    'click' => array('label'=>'Clicked', 'width'=>85, 'rate'=>'delivered'),
+    'spamreport' => array('label'=>'Spamreps', 'width'=>65, 'rate'=>null),
+    'unsubscribe' => array('label'=>'Unsubs', 'width'=>65, 'rate'=>null)
 );
 
 
@@ -174,13 +174,13 @@ function displayEventStats($events)
   foreach ($eventTypes as $eventType => $eventInfo) {
     $label = $eventInfo['label'];
     $width = $eventInfo['width'];
-    $showRate = $eventInfo['rate'];
+    $rateBasedOn = $eventInfo['rate'];
 
     print("<div class=\"item\" style=\"width:${width}px;\">");
     print("<div>$label</div><div class=\"$eventType\">");
     print($events[$eventType]);
-    if ($showRate) {
-      print(" (".round(100*$events[$eventType]/$events['delivered'], 1)."%)");
+    if ($rateBasedOn) {
+      print(" (".round(100*$events[$eventType]/$events[$rateBasedOn], 1)."%)");
     }
     print("</div></div>\n");
   }
