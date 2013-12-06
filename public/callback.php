@@ -16,11 +16,11 @@ if (isset($_SERVER['CONTENT_TYPE']) && strpos($_SERVER['CONTENT_TYPE'], 'applica
     }
 }
 else if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD']=='POST') {
-    log_("NOTICE", mysql_real_escape_string(http_build_query($_POST),$db));
+    log_("NOTICE", mysql_real_escape_string(http_build_query($_POST)));
     create_event($config, $_POST, $db);
 }
 else if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD']=='GET') {
-    log_("NOTICE", mysql_real_escape_string(http_build_query($_GET),$db));
+    log_("NOTICE", mysql_real_escape_string(http_build_query($_GET)));
     create_event($config, $_GET, $db);
 }
 else {
