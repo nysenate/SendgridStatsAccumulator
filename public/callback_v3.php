@@ -145,7 +145,7 @@ function create_event($config, $data, $dbcon)
     return HTTP_OK;
   }
   else if ($mailing_id == 0) {
-    log_(INFO, "[$install_class/$instance|$event_type] Skipping event for non-blast e-mail");
+    log_(INFO, "[$install_class/$instance|$event_type] Skipping event for non-blast e-mail; email=[$email]; category=[$category]");
     return HTTP_OK;
   }
 
