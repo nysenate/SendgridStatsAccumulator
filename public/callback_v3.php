@@ -1,78 +1,121 @@
 <?php
 
-//Load up the configuration
+// Define these constants prior to calling parse_ini_file().  That way, the
+// function will translate the debug_level string into an integer value.
+define('ERROR', 1);
+define('WARN', 2);
+define('INFO', 3);
+define('DEBUG', 4);
+
+define('HTTP_OK', 200);
+define('HTTP_BADREQ', 400);
+define('HTTP_SRVERR', 500);
+
+$g_debug_level = WARN;    // set the default logging level
+
+// Set up some global variables for event data.
+$g_event_keys = array(
+  'bounce'      => array('smtp-id', 'reason', 'status', 'type', 'sg_event_id'),
+  'click'       => array('useragent', 'ip', 'url'),
+  'deferred'    => array('smtp-id', 'attempt', 'response', 'sg_event_id'),
+  'delivered'   => array('smtp-id', 'response', 'sg_event_id'),
+  'dropped'     => array('smtp-id', 'reason'),
+  'open'        => array('useragent', 'ip'),
+  'processed'   => array('smtp-id', 'sg_event_id', 'sg_message_id'),
+  'spamreport'  => array('sg_message_id'),
+  'unsubscribe' => array()
+);
+$g_basic_keys = array('event', 'email', 'category', 'timestamp');
+$g_unique_keys = array('mailing_id', 'job_id', 'is_test', 'queue_id',
+                       'instance', 'install_class', 'servername');
+
+// Load up the configuration.
 $config_path = realpath(dirname(__FILE__).'/../config.ini');
 $config = load_config($config_path);
+if ($config === false) {
+    reply_and_exit(HTTP_SRVERR);
+}
 
-//Log the request parameters, encoded as a string for replication (curl)
-$db = get_db_connection();
+// Set up the debug log level and log file, and open db connection.
+$g_debug_level = get_debug_level($config);
+$g_log_file = get_log_file($config);
+$dbcon = get_db_connection($config);
+if ($dbcon === false) {
+    reply_and_exit(HTTP_SRVERR);
+}
 
 if (isset($_SERVER['CONTENT_TYPE']) && strpos($_SERVER['CONTENT_TYPE'], 'application/json') !== false) {
     //Process the batched data, separated json objects by new lines
     $batchData = file_get_contents("php://input");
-    log_("NOTICE", print_r($batchData, true));
+    log_(DEBUG, print_r($batchData, true));
     $jsonData = json_decode($batchData, true);
-    foreach ($jsonData as $eventData) {
-        create_event($config, $eventData, $db);
+    if ($jsonData) {
+        log_(INFO, "Processing batch of ".count($jsonData)." event record(s)");
+        foreach ($jsonData as $eventData) {
+            $http_status = create_event($config, $eventData, $dbcon);
+            if ($http_status == HTTP_SRVERR) {
+                break;
+            }
+        }
+    }
+    else {
+        log_(ERROR, "Unable to decode JSON event data");
+        $http_status = HTTP_SRVERR;
     }
 }
 else if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] == 'POST') {
-    log_("NOTICE", http_build_query($_POST), $db);
-    create_event($config, $_POST, $db);
+    log_(DEBUG, http_build_query($_POST));
+    log_(INFO, "Processing a single POST event record");
+    $http_status = create_event($config, $_POST, $dbcon);
 }
 else if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] == 'GET') {
-    log_("NOTICE", http_build_query($_GET), $db);
-    create_event($config, $_GET, $db);
+    log_(DEBUG, http_build_query($_GET));
+    log_(INFO, "Processing a single GET event record");
+    $http_status = create_event($config, $_GET, $dbcon);
 }
 else {
-    error_out(400, "Only POST, GET, and application/json requests supported.");
+    log_(ERROR, "Only POST, GET, and application/json requests supported");
+    $http_status = HTTP_BADREQ;
 }
 
-//Return the success code to SendGrid
-//We would have died already if something went wrong
-header("HTTP/1.1 200:", true, 200);
-echo "SUCCESS";
-exit(0);
+
+if ($dbcon) {
+    mysql_close($dbcon);
+}
+if ($g_log_file) {
+    fclose($g_log_file);
+}
+
+reply_and_exit($http_status);
 
 
 
-function create_event($config, $data, $db)
+function create_event($config, $data, $dbcon)
 {
-    // The combination of event specific, basic, and unique keys creates a set
-    // of required key values that we use to strictly validate the data source.
-    $event_keys = array(
-        'bounce'      => array('smtp-id', 'reason', 'status', 'type', 'sg_message_id'),
-        'click'       => array('useragent', 'ip', 'url'),
-        'deferred'    => array('smtp-id', 'attempt', 'response', 'sg_event_id'),
-        'delivered'   => array('smtp-id', 'response', 'sg_event_id'),
-        'dropped'     => array('smtp-id', 'reason'),
-        'open'        => array('useragent', 'ip'),
-        'processed'   => array('smtp-id', 'sg_event_id', 'sg_message_id'),
-        'spamreport'  => array('sg_message_id'),
-        'unsubscribe' => array()
-    );
-    $basic_keys = array('event', 'email', 'category', 'timestamp');
-    $unique_keys = array('mailing_id', 'job_id', 'is_test', 'queue_id',
-                         'instance', 'install_class', 'servername');
+    global $g_event_keys, $g_basic_keys, $g_unique_keys;
 
     // We require a valid event_type to be specified.
     if (!($event_type = get_default('event', $data, false))) {
-        error_out(400, "Event parameter must be specified and non-empty");
+        log_(ERROR, "Event parameter must be specified and non-empty");
+        return HTTP_SRVERR;
     }
-    else if (!isset($event_keys[$event_type])) {
-        error_out(400, "Event type '$event_type' is invalid.");
+    else if (!isset($g_event_keys[$event_type])) {
+        log_(ERROR, "Event type '$event_type' is invalid.");
+        return HTTP_SRVERR;
     }
 
+    // The combination of event specific, basic, and unique keys creates a set
+    // of required key values that we use to strictly validate the data source.
     // Generate an array of all possible valid keys for the current event,
     // then flip it so the possible values are actually keys themselves.
-    $expected_keys = array_merge($basic_keys, $event_keys[$event_type], $unique_keys);
+    $expected_keys = array_merge($g_basic_keys, $g_event_keys[$event_type], $g_unique_keys);
     $expected_keys = array_flip($expected_keys);
 
     // Also sanitize the SQL arguments for safety against injection.
     $cleaned_data = array();
     foreach ($data as $key => $value) {
         if (array_key_exists($key, $expected_keys)) {
-            $cleaned_data[$key] = mysql_real_escape_string(urldecode($value), $db);
+            $cleaned_data[$key] = mysql_real_escape_string(urldecode($value), $dbcon);
         }
     }
 
@@ -95,15 +138,21 @@ function create_event($config, $data, $db)
     $queue_id = get_default('queue_id', $cleaned_data, 0);
     $is_test = get_default('is_test', $cleaned_data, 0);
 
+    log_(INFO, "[$install_class/$instance#$mailing_id|$event_type] Processing event for email=$email");
+
     if (!$install_class && !$instance) {
-        // Quit early with an error, but still send back an HTTP 200.
-        error_out(200, "No install_class or CRM instance available in data for event '$event_type'; Received data: ".print_r($data, true));
+        log_(WARN, "No install_class or CRM instance available in data for event '$event_type'; email=[$email]; category=[$category]");
+        return HTTP_OK;
+    }
+    else if ($mailing_id == 0) {
+        log_(INFO, "[$install_class/$instance|$event_type] Skipping event for non-blast e-mail");
+        return HTTP_OK;
     }
 
     //Issue warnings if the incoming data isn't complete
     if ($diff = array_diff_key($expected_keys, $cleaned_data)) {
         $keys = implode(', ', array_keys($diff));
-        log_("WARN", "[$install_class/$instance#$mailing_id] Expected keys missing for event type '$event_type': $keys");
+        log_(WARN, "[$install_class/$instance#$mailing_id|$event_type] Expected keys missing: $keys [email=$email]");
     }
 
     //Issue warnings if more data was sent than was expected.
@@ -111,7 +160,7 @@ function create_event($config, $data, $db)
     //       contain only keys that were expected.
     if ($diff = array_diff_key($data, $expected_keys)) {
         $keys = implode(', ', array_keys($diff));
-        log_("WARN", "[$install_class/$instance#$mailing_id] Unexpected keys found for event type '$event_type': $keys");
+        log_(WARN, "[$install_class/$instance#$mailing_id|$event_type] Unexpected keys found: $keys [email=$email]");
     }
 
     // Build the generic event insert statement. Make sure to supply a default
@@ -157,9 +206,13 @@ function create_event($config, $data, $db)
     );
 
     foreach ($queries as $sql) {
-        exec_query($sql);
+        if (!exec_query($sql, $dbcon)) {
+            return HTTP_SRVERR;
+        }
     }
+    return HTTP_OK;
 } // create_event()
+
 
 
 function load_config($config_file)
@@ -167,15 +220,13 @@ function load_config($config_file)
     // If we can't find and load the configuration file just die immediately
     // SendGrid will put the event into a deferred queue and try again later
     if (!$config = parse_ini_file($config_file, true)) {
-        error_out(500, "Configuration file not found at '$config_file'.");
+        log_(ERROR, "Configuration file not found at '$config_file'.");
+        return false;
     }
 
     if (!array_key_exists('database', $config)) {
-        error_out(500, "Invalid config file: [database] section required");
-    }
-
-    if (!array_key_exists('debug', $config)) {
-        $config['debug'] = array('debug_level'=>1);
+        log_(ERROR, "Invalid config file: [database] section required");
+        return false;
     }
 
     return $config;
@@ -183,94 +234,76 @@ function load_config($config_file)
 
 
 
-function error_out($type, $message)
+function log_($log_level, $message)
 {
-    log_("ERROR", "[statserver] $type: $message");
-    header("HTTP/1.1 $type:", true, $type);
-    exit(1);
-} // error_out()
-
-
-
-function log_($debug_level, $message)
-{
-    $debug_config = $GLOBALS['config']['debug'];
-
-    $debug_levels = array(
-        1 => 'ERROR',
-        2 => 'WARN',
-        3 => 'NOTICE',
-        4 => 'INFO',
-    );
+    global $g_debug_level, $g_log_file;
 
     //Get the integer level for each and ignore out of scope log messages
-    $message_key = array_search($debug_level, $debug_levels);
-    $config_key = array_search($debug_config['debug_level'], $debug_levels);
-    if ($config_key < $message_key) {
+    if ($g_debug_level < $log_level) {
         return;
     }
 
+    switch ($log_level) {
+        case ERROR: $debug_level = 'ERROR'; break;
+        case WARN: $debug_level = 'WARN'; break;
+        case INFO: $debug_level = 'INFO'; break;
+        case DEBUG: $debug_level = 'DEBUG'; break;
+        default: $debug_level = $log_level; break;
+    }
     $date = date('Y-m-d H:i:s');
 
-    //Log to a debug file
-    if ($filepath = get_default('log_file', $debug_config, false)) {
-        if ($handle = fopen($filepath, 'a')) {
-            fwrite($handle, "$date [$debug_level] $message\n");
-            fclose($handle);
-        }
-        else {
-            //If the specified file can't be found log it to apache
-            error_log("[statserver] Could not open '$filepath' for writing.");
-            if ($debug_level == 'ERROR') {
-                error_log("[statserver] $message");
-            }
-        }
+    //Log to a debug file, or to Apache if debug file was not opened.
+    if ($g_log_file) {
+        fwrite($g_log_file, "$date [$debug_level] $message\n");
     }
     else {
-    //Or log to apache
         error_log("[statserver] $date [$debug_level] $message\n");
     }
 } // log_()
 
 
 
-function exec_query($sql)
+function exec_query($sql, $conn)
 {
-    static $conn = null;
-    if ($conn == null) {
-        $conn = get_db_connection();
-    }
-
     if (mysql_query($sql, $conn) === false) {
-        error_out(500, "MySQL Error: ".mysql_error($conn)."; running query: $sql");
+        log_(ERROR, "MySQL Error: ".mysql_error($conn)."; running query: $sql");
+        return false;
+    }
+    else {
+        return true;
     }
 } // exec_query()
 
 
 
-function get_db_connection()
+function get_db_connection($cfg)
 {
-    $dbconfig = $GLOBALS['config']['database'];
+    $dbconfig = $cfg['database'];
 
     //Validate the database configuration settings
-    $required_keys = array('host', 'name', 'user', 'pass', 'port');
+    $required_keys = array('host', 'port', 'user', 'pass', 'name');
     if ($missing_keys = array_diff_key(array_flip($required_keys), $dbconfig)) {
         $missing_key_msg = implode(', ', array_keys($diff));
-        error_out(500, "Section [database] missing keys: $missing_key_msg");
+        log_(ERROR, "Section [database] missing keys: $missing_key_msg");
+        return false;
     }
 
     $host = $dbconfig['host'];
-    $name = $dbconfig['name'];
+    $port = $dbconfig['port'];
     $user = $dbconfig['user'];
     $pass = $dbconfig['pass'];
-    $port = $dbconfig['port'];
+    $name = $dbconfig['name'];
 
-    if (!$conn = mysql_connect("$host:$port", $user, $pass)) {
-        error_out(500, "Could not connect to: $user:$pass@$host:$port");
+    $conn = mysql_connect("$host:$port", $user, $pass);
+    if (!$conn) {
+        log_(ERROR, "Could not connect to: $user:$pass@$host:$port");
+        return false;
     }
 
     if (!mysql_select_db($name, $conn)) {
-        error_out(500, "Database '$name' could not be selected.");
+        mysql_close($conn);
+        log_(ERROR, "Database '$name' could not be selected.");
+        return false;
     }
 
     return $conn;
@@ -283,5 +316,52 @@ function get_default($key, $data, $default)
     //Also check for the '' because we might want to default that to 0
     return (isset($data[$key]) && $data[$key] != '') ? $data[$key] : $default;
 } // get_default()
+
+
+
+function get_debug_level($cfg)
+{
+    $debug_level = WARN;    // default debug level is WARN
+    if (isset($cfg['debug']['debug_level'])) {
+        $debug_level_val = $cfg['debug']['debug_level'];
+        if (is_numeric($debug_level_val)) {
+            $debug_level = $debug_level_val;
+        }
+        else {
+            error_log("[statserver] $debug_level_val: Invalid debug level");
+        }
+    }
+    return $debug_level;
+} // get_debug_level()
+
+
+
+function get_log_file($cfg)
+{
+    $log_file = false;
+
+    if (isset($cfg['debug']['log_file'])) {
+        $filepath = $cfg['debug']['log_file'];
+        $log_file = fopen($filepath, 'a');
+        if (!$log_file) {
+            error_log("[statserver] $filepath: Unable to open for writing");
+        }
+    }
+    return $log_file;
+} // get_log_file()
+
+
+
+function reply_and_exit($http_status)
+{
+    header("HTTP/1.1 $http_status", true, $http_status);
+    if ($http_status != HTTP_OK) {
+        log_(ERROR, "[statserver] Returned HTTP status=$http_status");
+        exit(1);
+    }
+    else {
+        exit(0);
+    }
+} // reply_and_exit()
 
 ?>
