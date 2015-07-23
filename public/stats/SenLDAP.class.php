@@ -19,7 +19,7 @@ class SenLDAP
 
 
 
-  function login($user, $pass, $host, $port = self::DEFAULT_LDAP_PORT, &$err)
+  function login($user, $pass, $host, $port, &$err)
   {
     if ($this->ldapConn) {
       $err = "You are already logged in.  Please logout first.";
@@ -28,6 +28,9 @@ class SenLDAP
     else if (!$host || !$user || !$pass) {
       $err = "Must specify a host, user, and pass.";
       return false;
+    }
+    else if (!$port) {
+      $port = self::DEFAULT_LDAP_PORT;
     }
 
     $conn = ldap_connect($host, $port);
