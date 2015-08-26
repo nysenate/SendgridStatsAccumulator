@@ -250,14 +250,14 @@ function log_($log_level, $message)
     case DEBUG: $debug_level = 'DEBUG'; break;
     default: $debug_level = $log_level; break;
   }
-  $date = date('Y-m-d H:i:s');
+  $dt = date('YmdHis.').(int)(gettimeofday()['usec'] / 1000);
 
   //Log to a debug file, or to Apache if debug file was not opened.
   if ($g_log_file) {
-    fwrite($g_log_file, "$date [$debug_level] $message\n");
+    fwrite($g_log_file, "$dt [$debug_level] $message\n");
   }
   else {
-    error_log("[statserver] $date [$debug_level] $message\n");
+    error_log("[statserver] $dt [$debug_level] $message\n");
   }
 } // log_()
 
