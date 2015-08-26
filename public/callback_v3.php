@@ -16,16 +16,16 @@ $g_debug_level = WARN;  // set the default logging level
 // Set up some global variables for event data.
 $g_event_keys = array(
   'bounce'      => array('smtp-id', 'reason', 'status', 'type', 'sg_event_id'),
-  'click'       => array('useragent', 'ip', 'url'),
+  'click'       => array('useragent', 'ip', 'url', 'sg_event_id'),
   'deferred'    => array('smtp-id', 'attempt', 'response', 'sg_event_id'),
   'delivered'   => array('smtp-id', 'response', 'sg_event_id'),
   'dropped'     => array('smtp-id', 'reason'),
-  'open'        => array('useragent', 'ip'),
-  'processed'   => array('smtp-id', 'sg_event_id', 'sg_message_id'),
-  'spamreport'  => array('sg_message_id'),
+  'open'        => array('useragent', 'ip', 'sg_event_id'),
+  'processed'   => array('smtp-id', 'sg_event_id'),
+  'spamreport'  => array(),
   'unsubscribe' => array()
 );
-$g_basic_keys = array('event', 'email', 'category', 'timestamp');
+$g_basic_keys = array('event', 'email', 'category', 'timestamp', 'sg_message_id');
 $g_unique_keys = array('mailing_id', 'job_id', 'is_test', 'queue_id',
                        'instance', 'install_class', 'servername');
 
