@@ -15,17 +15,17 @@ $g_debug_level = WARN;  // set the default logging level
 
 // Set up some global variables for event data.
 $g_event_keys = array(
-  'bounce'      => array('smtp-id', 'reason', 'status', 'type', 'sg_event_id'),
-  'click'       => array('useragent', 'ip', 'url', 'sg_event_id'),
-  'deferred'    => array('smtp-id', 'attempt', 'response', 'sg_event_id'),
-  'delivered'   => array('smtp-id', 'response', 'sg_event_id'),
+  'bounce'      => array('smtp-id', 'reason', 'status', 'type'),
+  'click'       => array('useragent', 'url'),
+  'deferred'    => array('smtp-id', 'attempt', 'response'),
+  'delivered'   => array('smtp-id', 'response'),
   'dropped'     => array('smtp-id', 'reason'),
-  'open'        => array('useragent', 'ip', 'sg_event_id'),
-  'processed'   => array('smtp-id', 'sg_event_id'),
-  'spamreport'  => array(),
-  'unsubscribe' => array()
+  'open'        => array('useragent'),
+  'processed'   => array('smtp-id'),
+  'spamreport'  => array('useragent'),
+  'unsubscribe' => array('useragent')
 );
-$g_basic_keys = array('event', 'email', 'category', 'timestamp', 'sg_message_id');
+$g_basic_keys = array('event', 'email', 'category', 'timestamp', 'sg_event_id', 'sg_message_id', 'ip', 'tls', 'cert_err');
 $g_unique_keys = array('mailing_id', 'job_id', 'is_test', 'queue_id',
                        'instance', 'install_class', 'servername');
 
@@ -105,7 +105,7 @@ function create_event($config, $data, $dbcon)
   }
 
   // The combination of event specific, basic, and unique keys creates a set
-  // of required key values that we use to strictly validate the data source.
+  // of expected key values that we use to strictly validate the data source.
   // Generate an array of all possible valid keys for the current event,
   // then flip it so the possible values are actually keys themselves.
   $expected_keys = array_merge($g_basic_keys, $g_event_keys[$event_type], $g_unique_keys);
@@ -149,11 +149,15 @@ function create_event($config, $data, $dbcon)
     return HTTP_OK;
   }
 
+/********************************************************************
+** No longer expecting ALL of the expected_keys to be present.
+** Some keys are optional.
   //Issue warnings if the incoming data isn't complete
   if ($diff = array_diff_key($expected_keys, $cleaned_data)) {
     $keys = implode(', ', array_keys($diff));
     log_(WARN, "[$install_class/$instance#$mailing_id|$event_type] Expected keys missing: $keys [email=$email]");
   }
+********************************************************************/
 
   //Issue warnings if more data was sent than was expected.
   // Note: Must use $data, not $cleaned_data, since $cleaned_data will
