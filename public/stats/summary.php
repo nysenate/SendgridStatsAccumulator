@@ -12,7 +12,12 @@ $eventTypes = array(
     'spamreport' => array('label'=>'Spamreps', 'width'=>65, 'rate'=>null),
     'unsubscribe' => array('label'=>'Unsubs', 'width'=>65, 'rate'=>null)
 );
-
+$csvFields = array(
+  'name' => 'Senator Name',
+  'mailid' => 'Mailing ID',
+  'subdate' => 'Submission Date',
+  'mailname' => 'Mailer Name',
+);
 
 function getInstances($cfg, $groups)
 {
@@ -101,6 +106,97 @@ function getStats($cfg, $instances, $dt_start, $dt_end)
   return $stats;
 } // getStats()
 
+function getExportHeaderFields() {
+  global $csvFields, $eventTypes;
+  return array_merge(array_values($csvFields), array_column($eventTypes,'label'));
+}
+
+function exportStats($stats, $fm_summary = false)
+{
+  global $eventTypes;
+  $ret = false;
+  $grand_totals = array();
+  $all_stats = array();
+
+  foreach ($eventTypes as $event_type => $event_prop) {
+    $grand_totals[$event_type] = 0;
+  }
+
+  if (count($stats) > 0) {
+    foreach ($stats as $senator => $mailings) {
+      // get the stats for an entire senator
+      $one_senator_stats = exportSenatorStats($senator, $mailings, $fm_summary);
+      // the last row is the totals row for that senator
+      $one_senator_totals = array_slice($one_senator_stats,-1)[0];
+      // for each data point in the totals, add to the grand totals
+      foreach ($eventTypes as $event_type => $event_prop) {
+        $grand_totals[$event_type] += $one_senator_totals[$event_type];
+      }
+      // add the senator's stats to the overall stats
+      foreach ($one_senator_stats as $one_mailer) {
+        $all_stats[] = $one_mailer;
+      }
+    }
+
+    // compile the export
+    $export = implode(',',getExportHeaderFields()) . "\n";
+    foreach ($all_stats as $key=>$val) {
+      $export .= implode(',',$val) . "\n";
+    }
+
+    // add the final totals row
+    $totals_row = array_merge(
+      array("All Selected Senators","Grand Total",'',"All Mailings"),
+      array_values($grand_totals)
+    );
+    $export .= implode(',',$totals_row) . "\n";
+
+    header('Content-Type: application/csv');
+    header('Content-Transfer-Encoding: Binary');
+    header('Content-disposition: attachment; filename="SendGrid-Statistics-' . time() . '.csv"');
+    echo $export;
+    $ret = true;
+  }
+
+  return $ret;
+}
+
+function exportSenatorStats($senator, $mailings, $summary = false)
+{
+  global $eventTypes;
+
+  // initialize the return array
+  $export_rows = array();
+
+  // initialize the totals row
+  $totals = array();
+  foreach(array_keys($eventTypes) as $one_type) {
+    $totals[$one_type] = 0;
+  }
+
+  // for each mailing, build the entire row and add it to $export_rows
+  foreach ($mailings as $mailing_id => $mailing) {
+    $category = $mailing['category'];
+    $dt_first_date = date('m-d-y', strtotime($mailing['date']));
+    $one_row = array($senator, $mailing_id, $dt_first_date, $category);
+
+    $events = $mailing['events'];
+
+    foreach (array_keys($eventTypes) as $eventType) {
+      $val = isset($events[$eventType]) ? $events[$eventType] : 0;
+      $one_row[] = $val;
+      $totals[$eventType] += $val;
+    }
+
+    if (!$summary) {
+      $export_rows[] = $one_row;
+    }
+  }
+
+  $export_rows[] = array_merge(array($senator, "$senator Total", '', "All Mailings"), $totals);
+
+  return $export_rows;
+} // exportSenatorStats()
 
 
 function displayStats($stats, $fm_summary = false)

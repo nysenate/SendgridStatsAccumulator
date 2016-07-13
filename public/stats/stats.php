@@ -11,6 +11,7 @@ $fm_date_start = date('Y-m-d', strtotime('-1 month'));
 $fm_date_end = date('Y-m-d');
 $fm_instance = '';
 $fm_summary = false;
+$fm_export = false;
 
 if (isset($_POST['fm_date_start'])) {
   $fm_date_start = $_POST['fm_date_start'];
@@ -23,6 +24,9 @@ if (isset($_POST['fm_instance'])) {
 }
 if (isset($_POST['fm_summary']) && $_POST['fm_summary'] == 'on') {
   $fm_summary = true;
+}
+if (isset($_POST['fm_export'])) {
+  $fm_export = TRUE;
 }
 
 // Get an array of all instances that the logged in user is allowed to see.
@@ -43,6 +47,19 @@ function generateCalendarScript($name, $default_date)
   $myCalendar->writeScript();
 } // generateCalendarScript()
 
+if ($fm_instance && in_array($fm_instance, $instanceList)) {
+  $instances = array($fm_instance);
+}
+else {
+  $instances = $instanceList;
+}
+$stats = getStats($_SESSION['config'], $instances, $fm_date_start, $fm_date_end);
+
+if ($fm_export) {
+  if (exportStats($stats, $fm_summary)) {
+    die();
+  }
+}
 
 ?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
@@ -142,13 +159,6 @@ Statistics from <?php echo $fm_date_start;?> to <?php echo $fm_date_end;?>
 ?>
 -->
 <?php
-  if ($fm_instance && in_array($fm_instance, $instanceList)) {
-    $instances = array($fm_instance);
-  }
-  else {
-    $instances = $instanceList;
-  }
-  $stats = getStats($_SESSION['config'], $instances, $fm_date_start, $fm_date_end);
   displayStats($stats, $fm_summary);
 ?>
 <?php
