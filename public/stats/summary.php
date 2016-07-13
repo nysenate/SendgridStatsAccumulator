@@ -178,7 +178,7 @@ function exportSenatorStats($senator, $mailings, $summary = false)
   foreach ($mailings as $mailing_id => $mailing) {
     $category = $mailing['category'];
     $dt_first_date = date('m-d-y', strtotime($mailing['date']));
-    $one_row = array($senator, $mailing_id, $dt_first_date, $category);
+    $one_row = array($senator, $mailing_id, $dt_first_date, "\"$category\"");
 
     $events = $mailing['events'];
 
@@ -193,7 +193,7 @@ function exportSenatorStats($senator, $mailings, $summary = false)
     }
   }
 
-  $export_rows[] = array_merge(array($senator, "$senator Total", '', "All Mailings"), $totals);
+  $export_rows[] = array_merge(array($senator, "", '', "All Mailings"), $totals);
 
   return $export_rows;
 } // exportSenatorStats()
