@@ -118,7 +118,7 @@ foreach ($instanceList as $instance) {
 </div>
 
 <div style="float:left; padding:10px;">
-<input type="checkbox" name="fm_summary">Summary Only</input>
+<input type="checkbox" name="fm_summary"<?php if ($fm_summary) { print ' checked="checked"'; } ?>>Summary Only</input>
 </div>
 
 <input type="submit" name="fm_submit" style="float:left; margin-left:25px; margin-top:7px;" value="Submit"/>
