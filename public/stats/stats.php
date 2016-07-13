@@ -7,9 +7,10 @@ require_once('summary.php');
 require_once('tc_calendar.php');
 define('USE_JAVASCRIPT_TOTALS', false);
 
-$fm_date_start = date('Y-m-d', strtotime('-4 week'));
+$fm_date_start = date('Y-m-d', strtotime('-1 month'));
 $fm_date_end = date('Y-m-d');
 $fm_instance = '';
+$fm_summary = false;
 
 if (isset($_POST['fm_date_start'])) {
   $fm_date_start = $_POST['fm_date_start'];
@@ -19,6 +20,9 @@ if (isset($_POST['fm_date_end'])) {
 }
 if (isset($_POST['fm_instance'])) {
   $fm_instance = $_POST['fm_instance'];
+}
+if (isset($_POST['fm_summary']) && $_POST['fm_summary'] == 'on') {
+  $fm_summary = true;
 }
 
 // Get an array of all instances that the logged in user is allowed to see.
@@ -145,7 +149,7 @@ Statistics from <?php echo $fm_date_start;?> to <?php echo $fm_date_end;?>
     $instances = $instanceList;
   }
   $stats = getStats($_SESSION['config'], $instances, $fm_date_start, $fm_date_end);
-  displayStats($stats);
+  displayStats($stats, $fm_summary);
 ?>
 <?php
 if (USE_JAVASCRIPT_TOTALS) {

@@ -103,13 +103,13 @@ function getStats($cfg, $instances, $dt_start, $dt_end)
 
 
 
-function displayStats($stats)
+function displayStats($stats, $fm_summary = false)
 {
   // Confirm that there is at least one senator/mailing/event.
   if (count($stats) > 0) {
     $event_totals = array();
     foreach ($stats as $senator => $mailings) {
-      $event_counts = displaySenatorStats($senator, $mailings);
+      $event_counts = displaySenatorStats($senator, $mailings, $fm_summary);
       foreach ($event_counts as $event_type => $event_count) {
         $event_totals[$event_type] += $event_count;
       }
@@ -128,7 +128,7 @@ function displayStats($stats)
 
 
 
-function displaySenatorStats($senator, $mailings)
+function displaySenatorStats($senator, $mailings, $summary = false)
 {
   global $eventTypes;
 
@@ -140,8 +140,6 @@ function displaySenatorStats($senator, $mailings)
     $category = $mailing['category'];
     $dt_first_time = strtotime($mailing['date']);
     $dt_first_date = date('m-d-y', $dt_first_time);
-    print("<div class=\"date\">\n");
-    print('<div class="mailingID"><div>Mailing ID: '.$mailing_id.'</div><div class="text" style="margin:3px 0;"><span style="font-weight:bold">Submission Date: </span>'. $dt_first_date .'</div><div class="text">'.$category.'</div></div>'."\n");
 
     $stats = array();
     foreach (array_keys($eventTypes) as $eventType) {
@@ -153,8 +151,14 @@ function displaySenatorStats($senator, $mailings)
       }
       $totals[$eventType] += $stats[$eventType];
     }
-    displayEventStats($stats);
-    print("</div>\n");
+
+    if (!$summary) {
+      print("<div class=\"date\">\n");
+      print('<div class="mailingID"><div>Mailing ID: ' . $mailing_id . '</div><div class="text" style="margin:3px 0;"><span style="font-weight:bold">Submission Date: </span>' . $dt_first_date . '</div><div class="text">' . $category . '</div></div>' . "\n");
+
+      displayEventStats($stats);
+      print("</div>\n");
+    }
   }
 
   print("<div class=\"date\">\n");
