@@ -115,7 +115,7 @@ function displayStats($stats)
       }
     }
 
-    print("<div class=\"result\">\n<div class=\"senatorName\">Total</div>\n");
+    print("<div class=\"result\">\n<div class=\"senatorName\">All Selected Senators</div>\n");
     print("<div class=\"date\">\n");
     print('<div class="mailingID"><div>Totals</div><div class="text">Amongst All Senators</div></div>'."\n");
     displayEventStats($event_totals);
@@ -158,7 +158,7 @@ function displaySenatorStats($senator, $mailings)
   }
 
   print("<div class=\"date\">\n");
-  print('<div class="mailingID"><div>Mailing ID: Total</div></div>'."\n");
+  print("<div class=\"mailingID\"><div>$senator Total</div></div>\n");
   displayEventStats($totals);
   print("</div>\n</div>\n");
   return $totals;
@@ -170,7 +170,6 @@ function displayEventStats($events)
 {
   global $eventTypes;
 
-  //this is the order of array amounts, individual changes &/or additions could be added as if statements in the foreach
   foreach ($eventTypes as $eventType => $eventInfo) {
     $label = $eventInfo['label'];
     $width = $eventInfo['width'];

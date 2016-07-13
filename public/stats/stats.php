@@ -38,6 +38,8 @@ function generateCalendarScript($name, $default_date)
   $myCalendar->setDatePair('fm_date_start', 'fm_date_end');
   $myCalendar->writeScript();
 } // generateCalendarScript()
+
+
 ?>
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html>
@@ -111,7 +113,12 @@ foreach ($instanceList as $instance) {
 </select>
 </div>
 
-<input type="submit" style="float:left; margin-left:25px; margin-top:7px;" />
+<div style="float:left; padding:10px;">
+<input type="checkbox" name="fm_summary">Summary Only</input>
+</div>
+
+<input type="submit" name="fm_submit" style="float:left; margin-left:25px; margin-top:7px;" value="Submit"/>
+<input type="submit" name="fm_export" style="float:left; margin-left:25px; margin-top:7px;" value="Export as CSV"/>
 </form>
 
 <form action="logout.php" method="post">
@@ -122,8 +129,7 @@ foreach ($instanceList as $instance) {
 </div>
 
 <div class="dateRange">
-<span><?php print('Current Query Begins: '. $fm_date_start);?></span>
-<span><?php print('and Ends: '. $fm_date_end);?></span>
+Statistics from <?php echo $fm_date_start;?> to <?php echo $fm_date_end;?>
 </div>
 
 <!-- kz debugging: group list for logged in user
