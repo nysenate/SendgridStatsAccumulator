@@ -46,12 +46,12 @@ if ($dbcon === false) {
 
 if (isset($_SERVER['CONTENT_TYPE']) && strpos($_SERVER['CONTENT_TYPE'], 'application/json') !== false) {
   //Process the batched data, separated json objects by new lines
-  $batchData = file_get_contents("php://input");
-  log_(DEBUG, print_r($batchData, true));
-  $jsonData = json_decode($batchData, true);
-  if ($jsonData) {
-    log_(INFO, "Processing batch of ".count($jsonData)." event record(s)");
-    foreach ($jsonData as $eventData) {
+  $jsonData = file_get_contents("php://input");
+  log_(DEBUG, "Incoming JSON data: $jsonData");
+  $batchData = json_decode($jsonData, true);
+  if ($batchData) {
+    log_(INFO, "Processing batch of ".count($batchData)." event record(s)");
+    foreach ($batchData as $eventData) {
       $http_status = create_event($config, $eventData, $dbcon);
       if ($http_status == HTTP_SRVERR) {
         break;
@@ -80,10 +80,7 @@ else {
 
 
 if ($dbcon) {
-  mysql_close($dbcon);
-}
-if ($g_log_file) {
-  fclose($g_log_file);
+  mysqli_close($dbcon);
 }
 
 reply_and_exit($http_status);
@@ -115,7 +112,7 @@ function create_event($config, $data, $dbcon)
   $cleaned_data = array();
   foreach ($data as $key => $value) {
     if (array_key_exists($key, $expected_keys)) {
-      $cleaned_data[$key] = mysql_real_escape_string(urldecode($value), $dbcon);
+      $cleaned_data[$key] = mysqli_real_escape_string($dbcon, urldecode($value));
     }
   }
 
@@ -184,7 +181,7 @@ function create_event($config, $data, $dbcon)
   $reason = get_default('reason', $cleaned_data, '');
   $status = get_default('status', $cleaned_data, '');
   $type = get_default('type', $cleaned_data, '');
-  $url = get_default('url', $cleaned_data, '');
+  $url = get_default('url', $cleaned_data, '', 255);
 
   $insert_type = "INSERT INTO $event_type ";
   switch ($event_type) {
@@ -269,8 +266,8 @@ function log_($log_level, $message)
 
 function exec_query($sql, $conn)
 {
-  if (mysql_query($sql, $conn) === false) {
-    log_(ERROR, "MySQL Error: ".mysql_error($conn)."; running query: $sql");
+  if (mysqli_query($conn, $sql) === false) {
+    log_(ERROR, "MySQL Error: ".mysqli_error($conn)."; running query: $sql");
     return false;
   }
   else {
@@ -298,15 +295,9 @@ function get_db_connection($cfg)
   $pass = $dbconfig['pass'];
   $name = $dbconfig['name'];
 
-  $conn = mysql_connect("$host:$port", $user, $pass);
+  $conn = mysqli_connect($host, $user, $pass, $name, $port);
   if (!$conn) {
-    log_(ERROR, "Could not connect to: $user:$pass@$host:$port");
-    return false;
-  }
-
-  if (!mysql_select_db($name, $conn)) {
-    mysql_close($conn);
-    log_(ERROR, "Database '$name' could not be selected.");
+    log_(ERROR, "Could not connect to: $user:$pass@$host:$port/$name");
     return false;
   }
 
@@ -315,10 +306,21 @@ function get_db_connection($cfg)
 
 
 
-function get_default($key, $data, $default)
+function get_default($key, $a, $default, $maxlen = 0)
 {
   //Also check for the '' because we might want to default that to 0
-  return (isset($data[$key]) && $data[$key] != '') ? $data[$key] : $default;
+  if (isset($a[$key]) && $a[$key] != '') {
+    $val = $a[$key];
+  }
+  else {
+    $val = $default;
+  }
+
+  if ($maxlen > 0 && strlen($val) > $maxlen) {
+    log_(WARN, "Value for key [$key] exceeds maxlen=$maxlen; truncating");
+    $val = substr($val, 0, $maxlen);
+  }
+  return $val;
 } // get_default()
 
 
@@ -358,14 +360,22 @@ function get_log_file($cfg)
 
 function reply_and_exit($http_status)
 {
+  global $g_log_file;
+
   header("HTTP/1.1 $http_status", true, $http_status);
   if ($http_status != HTTP_OK) {
     log_(ERROR, "[statserver] Returned HTTP status=$http_status");
-    exit(1);
+    $rc = 1;
   }
   else {
-    exit(0);
+    $rc = 0;
   }
+
+  if ($g_log_file) {
+    fclose($g_log_file);
+  }
+
+  exit($rc);
 } // reply_and_exit()
 
 ?>
