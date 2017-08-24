@@ -40,18 +40,15 @@ function getInstances($cfg, $groups)
 
 function getStats($cfg, $instances, $dt_start, $dt_end)
 {
-  $dbhost = $cfg['database']['host'].":".$cfg['database']['port'];
+  $dbhost = $cfg['database']['host'];
+  $dbport = $cfg['database']['port'];
   $dbuser = $cfg['database']['user'];
   $dbpass = $cfg['database']['pass'];
   $dbname = $cfg['database']['name'];
 
-  $dbcon = mysql_connect($dbhost, $dbuser, $dbpass);
+  $dbcon = mysqli_connect($dbhost, $dbuser, $dbpass, $dbname, $dbport);
   if (!$dbcon) {
     die("Unable to connect to database");
-  }
-
-  if (!mysql_select_db($dbname)) {
-    die("Unable to select database [$dbname]");
   }
 
   // Generate SQL for the list of instances to be viewed.
@@ -80,11 +77,11 @@ function getStats($cfg, $instances, $dt_start, $dt_end)
   GROUP BY instance, mailing_id, event
   ORDER BY instance ASC, mailing_id DESC;";
 
-  $res = mysql_query($q, $dbcon);
+  $res = mysqli_query($dbcon, $q);
 
   $stats = array();
 
-  while ($row = mysql_fetch_assoc($res)) {
+  while ($row = mysqli_fetch_assoc($res)) {
     $inst = $row['instance'];
     $mid = $row['mailing_id'];
     $ev = $row['event'];
@@ -102,7 +99,8 @@ function getStats($cfg, $instances, $dt_start, $dt_end)
     }
   }
 
-  mysql_close($dbcon);
+  mysqli_free_result($res);
+  mysqli_close($dbcon);
   return $stats;
 } // getStats()
 
