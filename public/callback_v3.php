@@ -112,6 +112,12 @@ function create_event($config, $data, $dbcon)
   $cleaned_data = array();
   foreach ($data as $key => $value) {
     if (array_key_exists($key, $expected_keys)) {
+      if (is_array($value)) {
+        $first_elem = reset($value);
+        log_(INFO, "Key '$key' in event '$event_type' has an array value; using first element '$first_elem' as value");
+        log_(DEBUG, "Key '$key' value is ".print_r($value, true));
+        $value = $first_elem;
+      }
       $cleaned_data[$key] = mysqli_real_escape_string($dbcon, urldecode($value));
     }
   }
