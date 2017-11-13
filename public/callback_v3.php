@@ -303,7 +303,7 @@ function get_db_connection($cfg)
 
   $conn = mysqli_connect($host, $user, $pass, $name, $port);
   if (!$conn) {
-    log_(ERROR, "Could not connect to: $user:$pass@$host:$port/$name");
+    log_(ERROR, "Could not connect to: mysqli://$user:$pass@$host:$port/$name: ".mysqli_connect_error());
     return false;
   }
 
