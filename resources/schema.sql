@@ -136,7 +136,7 @@ DELIMITER ;
 --   result: lets us know what happened
 CREATE TABLE instance (
     id int unsigned PRIMARY KEY auto_increment,
-    install_class ENUM('prod','test','dev'),
+    install_class ENUM('prod','staging','test','dev'),
     servername varchar(255),
     name varchar(255),
 
