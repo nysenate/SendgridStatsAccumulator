@@ -68,6 +68,16 @@ class SenLDAP
       throw new Exception($msg);
     }
 
+    // It is very important to check for a null or empty password.  The
+    // ldap_bind() function will attempt an anonymous bind if the password
+    // is empty.  Since we are using ldap_bind() to verify the user's login
+    // credentials, an empty password would allow a user to authenticate
+    // with only his/her username.  This is certainly not intended behavior.
+    if (empty($uname) || empty($pw)) {
+      $msg = "Username and password must be provided in order to authenticate";
+      throw new Exception($msg);
+    }
+
     if ($uattr === null) {
       $uattr = self::DEFAULT_USER_ATTR;
     }
