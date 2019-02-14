@@ -6,17 +6,25 @@ require_once('SenLDAP.class.php');
 session_start();
 $scriptPopupMsg = '';
 
-$config = parse_ini_file('../../config.ini', true);
-
-if (!isset($config['ldap'])) {
-  die("Config file must have [ldap] section");
-}
-else if (!isset($config['ldap']['host'])) {
-  die("LDAP hostname must be set in config file");
+$cfg = parse_ini_file('../../config.ini', true);
+if ($cfg === false) {
+  die('Unable to parse config file');
 }
 
-$ldapHost = $config['ldap']['host'];
-$ldapPort = (isset($config['ldap']['port'])) ? $config['ldap']['port'] : null;
+if (!isset($cfg['ldap'])) {
+  die('Config file must have [ldap] section');
+}
+
+$ldapCfg = $cfg['ldap'];
+if (!isset($ldapCfg['host'])) {
+  die('LDAP hostname must be set in config file');
+}
+
+foreach (['host','port','binddn','bindpw','basedn','userattr'] as $param) {
+  if (!array_key_exists($param, $ldapCfg)) {
+    $ldapCfg[$param] = null;
+  }
+}
 
 if (isset($_SESSION['groups']) && isset($_SESSION['config'])) {
   header('Location: stats.php');
@@ -25,19 +33,22 @@ else if (isset($_POST['loginname']) && isset($_POST['loginpass'])) {
   $user = $_POST['loginname'];
   $pass = $_POST['loginpass'];
   if (!$user || !$pass) {
-    $scriptPopupMsg = "Username and/or Password cannot be blank";
+    $scriptPopupMsg = "Username and/or password cannot be blank";
   }
   else {
     $nyssLdap = new SenLDAP();
-    if (!$nyssLdap->login($user, $pass, $ldapHost, $ldapPort, $err)) {
-      $scriptPopupMsg = $err;
-    }
-    else {
+    try {
+      $nyssLdap->bind($ldapCfg['host'], $ldapCfg['port'], $ldapCfg['binddn'], $ldapCfg['bindpw']);
+      $nyssLdap->authenticate($user, $pass, $ldapCfg['userattr'], $ldapCfg['basedn']);
       $userGroups = $nyssLdap->getGroups();
       $nyssLdap->logout();
-      $_SESSION['config'] = $config;
+      $_SESSION['config'] = $cfg;
       $_SESSION['groups'] = $userGroups;
       header('Location: stats.php');
+    }
+    catch (Exception $e) {
+      $scriptPopupMsg = $e->getMessage();
+      $nyssLdap->logout();
     }
   }
 }
