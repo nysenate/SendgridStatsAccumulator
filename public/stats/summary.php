@@ -201,8 +201,10 @@ function displayStats($stats, $fm_summary = false)
 {
   // Confirm that there is at least one senator/mailing/event.
   if (count($stats) > 0) {
+    $mailing_count = 0;
     $event_totals = array();
     foreach ($stats as $senator => $mailings) {
+      $mailing_count += count($mailings);
       $event_counts = displaySenatorStats($senator, $mailings, $fm_summary);
       foreach ($event_counts as $event_type => $event_count) {
         $event_totals[$event_type] += $event_count;
@@ -211,7 +213,7 @@ function displayStats($stats, $fm_summary = false)
 
     print("<div class=\"result\">\n<div class=\"senatorName\">All Selected Senators</div>\n");
     print("<div class=\"date\">\n");
-    print('<div class="mailingID"><div>Totals</div><div class="text">Amongst All Senators</div></div>'."\n");
+    print('<div class="mailingID"><div>Totals</div><div class="text">Amongst All Senators</div><div class="text">'."Count: $mailing_count</div></div>\n");
     displayEventStats($event_totals);
     print("</div>\n</div>\n");
   }
@@ -255,8 +257,9 @@ function displaySenatorStats($senator, $mailings, $summary = false)
     }
   }
 
+  $mailing_count = count($mailings);
   print("<div class=\"date\">\n");
-  print("<div class=\"mailingID\"><div>$senator Total</div></div>\n");
+  print("<div class=\"mailingID\"><div>$senator Total</div><div class=\"text\">Count: $mailing_count</div></div>\n");
   displayEventStats($totals);
   print("</div>\n</div>\n");
   return $totals;

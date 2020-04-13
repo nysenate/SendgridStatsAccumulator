@@ -6,7 +6,19 @@ if (!isset($_SESSION['groups'])) {
 require_once('summary.php');
 require_once('tc_calendar.php');
 define('USE_JAVASCRIPT_TOTALS', false);
-
+function generateCalendarScript($name, $default_date)
+{
+  $myCalendar = new tc_calendar($name, true, false);
+  $myCalendar->setIcon("images/iconCalendar.gif");
+  $myCalendar->setDate(date('d', strtotime($default_date)),
+                       date('m', strtotime($default_date)),
+                       date('Y', strtotime($default_date)));
+  $myCalendar->setPath("/stats/");
+  $myCalendar->setYearInterval(1970, 2020);
+  $myCalendar->setAlignment('left', 'bottom');
+  $myCalendar->setDatePair('fm_date_start', 'fm_date_end');
+  $myCalendar->writeScript();
+} // generateCalendarScript()
 $fm_date_start = date('Y-m-d', strtotime('-1 month'));
 $fm_date_end = date('Y-m-d');
 $fm_instance = '';
@@ -26,26 +38,11 @@ if (isset($_POST['fm_summary']) && $_POST['fm_summary'] == 'on') {
   $fm_summary = true;
 }
 if (isset($_POST['fm_export'])) {
-  $fm_export = TRUE;
+  $fm_export = true;
 }
 
 // Get an array of all instances that the logged in user is allowed to see.
 $instanceList = getInstances($_SESSION['config'], $_SESSION['groups']);
-
-
-function generateCalendarScript($name, $default_date)
-{
-  $myCalendar = new tc_calendar($name, true, false);
-  $myCalendar->setIcon("images/iconCalendar.gif");
-  $myCalendar->setDate(date('d', strtotime($default_date)),
-                       date('m', strtotime($default_date)),
-                       date('Y', strtotime($default_date)));
-  $myCalendar->setPath("/stats/");
-  $myCalendar->setYearInterval(1970, 2020);
-  $myCalendar->setAlignment('left', 'bottom');
-  $myCalendar->setDatePair('fm_date_start', 'fm_date_end');
-  $myCalendar->writeScript();
-} // generateCalendarScript()
 
 if ($fm_instance && in_array($fm_instance, $instanceList)) {
   $instances = array($fm_instance);
@@ -110,6 +107,9 @@ Sendgrid Stats
 
 <div class="header">
 Sendgrid Accumulator Stats
+</div>
+
+<div class="filters">
 
 <form action="" method="post">
 <div style="float:left; padding:10px;">
