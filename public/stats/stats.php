@@ -5,20 +5,23 @@ if (!isset($_SESSION['groups'])) {
 }
 require_once('summary.php');
 require_once('tc_calendar.php');
+
 define('USE_JAVASCRIPT_TOTALS', false);
+
+
 function generateCalendarScript($name, $default_date)
 {
   $myCalendar = new tc_calendar($name, true, false);
   $myCalendar->setIcon("images/iconCalendar.gif");
-  $myCalendar->setDate(date('d', strtotime($default_date)),
-                       date('m', strtotime($default_date)),
-                       date('Y', strtotime($default_date)));
+  $myCalendar->setDateYMD($default_date);
   $myCalendar->setPath("/stats/");
-  $myCalendar->setYearInterval(1970, 2020);
+  $myCalendar->setYearInterval(2010, date('Y'));
   $myCalendar->setAlignment('left', 'bottom');
   $myCalendar->setDatePair('fm_date_start', 'fm_date_end');
   $myCalendar->writeScript();
 } // generateCalendarScript()
+
+
 $fm_date_start = date('Y-m-d', strtotime('-1 month'));
 $fm_date_end = date('Y-m-d');
 $fm_instance = '';
