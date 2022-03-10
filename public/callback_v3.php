@@ -20,8 +20,8 @@ $g_event_keys = array(
   'deferred'    => array('smtp-id', 'attempt', 'response'),
   'delivered'   => array('smtp-id', 'response'),
   'dropped'     => array('smtp-id', 'reason'),
-  'open'        => array('useragent'),
-  'processed'   => array('smtp-id'),
+  'open'        => array('useragent', 'sg_content_type', 'sg_machine_open'),
+  'processed'   => array('smtp-id', 'send_at'),
   'spamreport'  => array('useragent'),
   'unsubscribe' => array('useragent')
 );
@@ -164,7 +164,7 @@ function create_event($config, $data, $dbcon)
 
   //Issue warnings if more data was sent than was expected.
   // Note: Must use $data, not $cleaned_data, since $cleaned_data will
-  //     contain only keys that were expected.
+  //       contain only keys that were expected.
   if ($diff = array_diff_key($data, $expected_keys)) {
     $keys = implode(', ', array_keys($diff));
     log_(WARN, "[$install_class/$instance#$mailing_id|$event_type] Unexpected keys found: $keys [email=$email]");
