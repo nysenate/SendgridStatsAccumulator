@@ -4,7 +4,7 @@ if (!isset($_SESSION['groups'])) {
   die("You are not authorized to view this page.");
 }
 require_once('summary.php');
-require_once('tc_calendar.php');
+require_once('calendar/classes/tc_calendar.php');
 
 define('USE_JAVASCRIPT_TOTALS', false);
 
@@ -14,7 +14,7 @@ function generateCalendarScript($name, $default_date)
   $myCalendar = new tc_calendar($name, true, false);
   $myCalendar->setIcon("images/iconCalendar.gif");
   $myCalendar->setDateYMD($default_date);
-  $myCalendar->setPath("/stats/");
+  $myCalendar->setPath("/stats/calendar");
   $myCalendar->setYearInterval(2010, date('Y'));
   $myCalendar->setAlignment('left', 'bottom');
   $myCalendar->setDatePair('fm_date_start', 'fm_date_end');
@@ -68,8 +68,8 @@ if ($fm_export) {
 <meta content="text/html;charset=utf-8" http-equiv="Content-Type"/>
 <meta content="utf-8" http-equiv="encoding"/>
 <link href="stats.css" rel="stylesheet" type="text/css"/>
-<link href="calendar.css" rel="stylesheet" type="text/css"/>
-<script language="javascript" src="calendar.js"></script>
+<link href="calendar/calendar.css" rel="stylesheet" type="text/css"/>
+<script language="javascript" src="calendar/calendar.js"></script>
 <?php
 if (USE_JAVASCRIPT_TOTALS) {
 ?>
