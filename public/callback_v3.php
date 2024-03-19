@@ -15,17 +15,17 @@ $g_debug_level = WARN;  // set the default logging level
 
 // Set up some global variables for event data.
 $g_event_keys = array(
-  'bounce'      => array('smtp-id', 'reason', 'status', 'type'),
-  'click'       => array('useragent', 'url', 'url_offset'),
-  'deferred'    => array('smtp-id', 'attempt', 'response'),
-  'delivered'   => array('smtp-id', 'response'),
-  'dropped'     => array('smtp-id', 'reason'),
-  'open'        => array('useragent', 'sg_content_type', 'sg_machine_open'),
-  'processed'   => array('smtp-id', 'send_at'),
+  'bounce'      => array('bounce_classification', 'ip', 'reason', 'smtp-id', 'status', 'tls', 'type'),
+  'click'       => array('ip', 'url', 'url_offset', 'useragent'),
+  'deferred'    => array('attempt', 'ip', 'reason', 'response', 'smtp-id', 'tls'),
+  'delivered'   => array('ip', 'response', 'smtp-id', 'tls'),
+  'dropped'     => array('reason', 'smtp-id'),
+  'open'        => array('ip', 'sg_content_type', 'sg_machine_open', 'useragent'),
+  'processed'   => array('pool', 'smtp-id'),
   'spamreport'  => array('useragent'),
-  'unsubscribe' => array('useragent')
+  'unsubscribe' => array('date', 'reseller_id', 'useragent')
 );
-$g_basic_keys = array('event', 'email', 'category', 'timestamp', 'sg_event_id', 'sg_message_id', 'ip', 'tls', 'cert_err');
+$g_basic_keys = array('category', 'email', 'event', 'sg_event_id', 'sg_message_id', 'timestamp', 'unique_args');
 $g_unique_keys = array('mailing_id', 'job_id', 'is_test', 'queue_id',
                        'instance', 'install_class', 'servername');
 
