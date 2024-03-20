@@ -21,7 +21,7 @@ $g_event_keys = array(
   'delivered'   => array('ip', 'response', 'smtp-id', 'tls'),
   'dropped'     => array('reason', 'smtp-id'),
   'open'        => array('ip', 'sg_content_type', 'sg_machine_open', 'useragent'),
-  'processed'   => array('pool', 'smtp-id'),
+  'processed'   => array('pool', 'send_at', 'smtp-id'),
   'spamreport'  => array('useragent'),
   'unsubscribe' => array('date', 'reseller_id', 'useragent')
 );
