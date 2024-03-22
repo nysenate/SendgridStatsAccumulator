@@ -14,20 +14,19 @@ define('HTTP_SRVERR', 500);
 $g_debug_level = WARN;  // set the default logging level
 
 // Set up some global variables for event data.
-$g_event_keys = array(
-  'bounce'      => array('bounce_classification', 'ip', 'reason', 'smtp-id', 'status', 'tls', 'type'),
-  'click'       => array('ip', 'url', 'url_offset', 'useragent'),
-  'deferred'    => array('attempt', 'ip', 'reason', 'response', 'smtp-id', 'tls'),
-  'delivered'   => array('ip', 'response', 'smtp-id', 'tls'),
-  'dropped'     => array('reason', 'smtp-id'),
-  'open'        => array('ip', 'sg_content_type', 'sg_machine_open', 'useragent'),
-  'processed'   => array('pool', 'send_at', 'smtp-id'),
-  'spamreport'  => array('useragent'),
-  'unsubscribe' => array('date', 'reseller_id', 'useragent')
-);
-$g_basic_keys = array('category', 'email', 'event', 'sg_event_id', 'sg_message_id', 'timestamp', 'unique_args');
-$g_unique_keys = array('mailing_id', 'job_id', 'is_test', 'queue_id',
-                       'instance', 'install_class', 'servername');
+$g_event_keys = [
+  'bounce'      => ['bounce_classification', 'ip', 'reason', 'smtp-id', 'status', 'tls', 'type'],
+  'click'       => ['ip', 'url', 'url_offset', 'useragent'],
+  'deferred'    => ['attempt', 'ip', 'reason', 'response', 'smtp-id', 'tls'],
+  'delivered'   => ['ip', 'response', 'smtp-id', 'tls'],
+  'dropped'     => ['reason', 'smtp-id'],
+  'open'        => ['ip', 'sg_content_type', 'sg_machine_open', 'useragent'],
+  'processed'   => ['pool', 'send_at', 'smtp-id'],
+  'spamreport'  => ['useragent'],
+  'unsubscribe' => ['date', 'reseller_id', 'useragent']
+];
+$g_basic_keys = ['category', 'email', 'event', 'sg_event_id', 'sg_message_id', 'timestamp', 'unique_args'];
+$g_unique_keys = ['mailing_id', 'job_id', 'is_test', 'queue_id', 'instance', 'install_class', 'servername'];
 
 // Load up the configuration.
 $config_path = realpath(dirname(__FILE__).'/../config.ini');
@@ -109,7 +108,7 @@ function create_event($config, $data, $dbcon)
   $expected_keys = array_flip($expected_keys);
 
   // Also sanitize the SQL arguments for safety against injection.
-  $cleaned_data = array();
+  $cleaned_data = [];
   foreach ($data as $key => $value) {
     if (array_key_exists($key, $expected_keys)) {
       if (is_array($value)) {
@@ -157,7 +156,7 @@ function create_event($config, $data, $dbcon)
 ** Some keys are optional.
   //Issue warnings if the incoming data isn't complete
   if ($diff = array_diff_key($expected_keys, $cleaned_data)) {
-    $keys = implode(', ', array_keys($diff));
+    $keys = implode(',', array_keys($diff));
     log_(WARN, "[$install_class/$instance#$mailing_id|$event_type] Expected keys missing: $keys [email=$email]");
   }
 ********************************************************************/
@@ -166,7 +165,7 @@ function create_event($config, $data, $dbcon)
   // Note: Must use $data, not $cleaned_data, since $cleaned_data will
   //       contain only keys that were expected.
   if ($diff = array_diff_key($data, $expected_keys)) {
-    $keys = implode(', ', array_keys($diff));
+    $keys = implode(',', array_keys($diff));
     log_(WARN, "[$install_class/$instance#$mailing_id|$event_type] Unexpected keys found: $keys [email=$email]");
   }
 
@@ -203,14 +202,14 @@ function create_event($config, $data, $dbcon)
   };
 
   // Run a sequence of SQL queries, locked in a transaction for consistency
-  $queries = array(
-    "SET autocommit=0",
-    "BEGIN",
+  $queries = [
+    'SET autocommit=0',
+    'BEGIN',
     $insert_event,
-    "SET @event_id := LAST_INSERT_ID()",
+    'SET @event_id := LAST_INSERT_ID()',
     $insert_type,
-    "COMMIT"
-  );
+    'COMMIT'
+  ];
 
   foreach ($queries as $sql) {
     if (!exec_query($sql, $dbcon)) {
@@ -288,7 +287,7 @@ function get_db_connection($cfg)
   $dbconfig = $cfg['database'];
 
   //Validate the database configuration settings
-  $required_keys = array('host', 'port', 'user', 'pass', 'name');
+  $required_keys = ['host', 'port', 'user', 'pass', 'name'];
   if ($missing_keys = array_diff_key(array_flip($required_keys), $dbconfig)) {
     $missing_key_msg = implode(', ', array_keys($diff));
     log_(ERROR, "Section [database] missing keys: $missing_key_msg");
