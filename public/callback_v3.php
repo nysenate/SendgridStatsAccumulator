@@ -17,7 +17,7 @@ $g_debug_level = WARN;  // set the default logging level
 $g_event_keys = [
   'bounce'      => ['bounce_classification', 'ip', 'reason', 'smtp-id', 'status', 'tls', 'type'],
   'click'       => ['ip', 'url', 'url_offset', 'useragent'],
-  'deferred'    => ['attempt', 'ip', 'reason', 'response', 'smtp-id', 'tls'],
+  'deferred'    => ['attempt', 'domain', 'from', 'ip', 'reason', 'response', 'smtp-id', 'tls'],
   'delivered'   => ['ip', 'response', 'smtp-id', 'tls'],
   'dropped'     => ['reason', 'smtp-id'],
   'open'        => ['ip', 'sg_content_type', 'sg_machine_open', 'useragent'],
@@ -32,6 +32,7 @@ $g_unique_keys = ['mailing_id', 'job_id', 'is_test', 'queue_id', 'instance', 'in
 $config_path = realpath(dirname(__FILE__).'/../config.ini');
 $config = load_config($config_path);
 if ($config === false) {
+  logm(ERROR, "Unable to load the configuration file");
   reply_and_exit(HTTP_SRVERR);
 }
 
@@ -40,40 +41,42 @@ $g_debug_level = get_debug_level($config);
 $g_log_file = get_log_file($config);
 $dbcon = get_db_connection($config);
 if ($dbcon === false) {
+  logm(ERROR, "Unable to connect to the database");
   reply_and_exit(HTTP_SRVERR);
 }
 
 if (isset($_SERVER['CONTENT_TYPE']) && strpos($_SERVER['CONTENT_TYPE'], 'application/json') !== false) {
   //Process the batched data, separated json objects by new lines
   $jsonData = file_get_contents("php://input");
-  log_(DEBUG, "Incoming JSON data: $jsonData");
+  logm(DEBUG, "Incoming JSON data: $jsonData");
   $batchData = json_decode($jsonData, true);
   if ($batchData) {
-    log_(INFO, "Processing batch of ".count($batchData)." event record(s)");
+    logm(INFO, "Processing batch of ".count($batchData)." event record(s)");
     foreach ($batchData as $eventData) {
       $http_status = create_event($config, $eventData, $dbcon);
       if ($http_status == HTTP_SRVERR) {
+        logm(ERROR, "Unable to process event; returning HTTP $http_status");
         break;
       }
     }
   }
   else {
-    log_(ERROR, "Unable to decode JSON event data");
+    logm(ERROR, "Unable to decode JSON event data");
     $http_status = HTTP_SRVERR;
   }
 }
 else if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] == 'POST') {
-  log_(DEBUG, http_build_query($_POST));
-  log_(INFO, "Processing a single POST event record");
+  logm(DEBUG, http_build_query($_POST));
+  logm(INFO, "Processing a single POST event record");
   $http_status = create_event($config, $_POST, $dbcon);
 }
 else if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] == 'GET') {
-  log_(DEBUG, http_build_query($_GET));
-  log_(INFO, "Processing a single GET event record");
+  logm(DEBUG, http_build_query($_GET));
+  logm(INFO, "Processing a single GET event record");
   $http_status = create_event($config, $_GET, $dbcon);
 }
 else {
-  log_(ERROR, "Only POST, GET, and application/json requests supported");
+  logm(ERROR, "Only POST, GET, and application/json requests supported");
   $http_status = HTTP_BADREQ;
 }
 
@@ -92,11 +95,11 @@ function create_event($config, $data, $dbcon)
 
   // We require a valid event_type to be specified.
   if (!($event_type = get_default('event', $data, false))) {
-    log_(ERROR, "Event parameter must be specified and non-empty");
+    logm(ERROR, "Event parameter must be specified and non-empty");
     return HTTP_SRVERR;
   }
   else if (!isset($g_event_keys[$event_type])) {
-    log_(ERROR, "Event type '$event_type' is invalid.");
+    logm(ERROR, "Event type '$event_type' is invalid.");
     return HTTP_SRVERR;
   }
 
@@ -113,8 +116,8 @@ function create_event($config, $data, $dbcon)
     if (array_key_exists($key, $expected_keys)) {
       if (is_array($value)) {
         $first_elem = reset($value);
-        log_(INFO, "Key '$key' in event '$event_type' has an array value; using first element '$first_elem' as value");
-        log_(DEBUG, "Key '$key' value is ".print_r($value, true));
+        logm(INFO, "Key '$key' in event '$event_type' has an array value; using first element '$first_elem' as value");
+        logm(DEBUG, "Key '$key' value is ".print_r($value, true));
         $value = $first_elem;
       }
       $cleaned_data[$key] = mysqli_real_escape_string($dbcon, urldecode($value));
@@ -140,14 +143,14 @@ function create_event($config, $data, $dbcon)
   $queue_id = get_default('queue_id', $cleaned_data, 0);
   $is_test = get_default('is_test', $cleaned_data, 0);
 
-  log_(INFO, "[$install_class/$instance#$mailing_id|$event_type] Processing event for email=$email");
+  logm(INFO, "[$install_class/$instance#$mailing_id|$event_type] Processing event for email=$email");
 
   if (!$install_class && !$instance) {
-    log_(WARN, "No install_class or CRM instance available in data for event '$event_type'; email=[$email]; category=[$category]");
+    logm(WARN, "No install_class or CRM instance available in data for event '$event_type'; email=[$email]; category=[$category]");
     return HTTP_OK;
   }
   else if ($mailing_id == 0) {
-    log_(INFO, "[$install_class/$instance|$event_type] Skipping event for non-blast e-mail; email=[$email]; category=[$category]");
+    logm(INFO, "[$install_class/$instance|$event_type] Skipping event for non-blast e-mail; email=[$email]; category=[$category]");
     return HTTP_OK;
   }
 
@@ -157,7 +160,7 @@ function create_event($config, $data, $dbcon)
   //Issue warnings if the incoming data isn't complete
   if ($diff = array_diff_key($expected_keys, $cleaned_data)) {
     $keys = implode(',', array_keys($diff));
-    log_(WARN, "[$install_class/$instance#$mailing_id|$event_type] Expected keys missing: $keys [email=$email]");
+    logm(WARN, "[$install_class/$instance#$mailing_id|$event_type] Expected keys missing: $keys [email=$email]");
   }
 ********************************************************************/
 
@@ -166,7 +169,7 @@ function create_event($config, $data, $dbcon)
   //       contain only keys that were expected.
   if ($diff = array_diff_key($data, $expected_keys)) {
     $keys = implode(',', array_keys($diff));
-    log_(WARN, "[$install_class/$instance#$mailing_id|$event_type] Unexpected keys found: $keys [email=$email]");
+    logm(WARN, "[$install_class/$instance#$mailing_id|$event_type] Unexpected keys found: $keys [email=$email]");
   }
 
   // Build the generic event insert statement. Make sure to supply a default
@@ -226,12 +229,12 @@ function load_config($config_file)
   // If we can't find and load the configuration file just die immediately
   // SendGrid will put the event into a deferred queue and try again later
   if (!$config = parse_ini_file($config_file, true)) {
-    log_(ERROR, "Configuration file not found at '$config_file'.");
+    logm(ERROR, "Configuration file not found at '$config_file'.");
     return false;
   }
 
   if (!array_key_exists('database', $config)) {
-    log_(ERROR, "Invalid config file: [database] section required");
+    logm(ERROR, "Invalid config file: [database] section required");
     return false;
   }
 
@@ -240,7 +243,7 @@ function load_config($config_file)
 
 
 
-function log_($log_level, $message)
+function logm($log_level, $message)
 {
   global $g_debug_level, $g_log_file;
 
@@ -265,18 +268,24 @@ function log_($log_level, $message)
   else {
     error_log("[statserver] $dt [$debug_level] $message\n");
   }
-} // log_()
+} // logm()
 
 
 
 function exec_query($sql, $conn)
 {
-  if (mysqli_query($conn, $sql) === false) {
-    log_(ERROR, "MySQL Error: ".mysqli_error($conn)."; running query: $sql");
-    return false;
+  try {
+    if (mysqli_query($conn, $sql) === false) {
+      logm(ERROR, "MySQL Error: ".mysqli_error($conn)."; running query: $sql");
+      return false;
+    }
+    else {
+      return true;
+    }
   }
-  else {
-    return true;
+  catch (mysqli_sql_exception $e) {
+    logm(ERROR, "MySQL Error: ".$e->getMessage()."; running query: $sql");
+    return false;
   }
 } // exec_query()
 
@@ -290,7 +299,7 @@ function get_db_connection($cfg)
   $required_keys = ['host', 'port', 'user', 'pass', 'name'];
   if ($missing_keys = array_diff_key(array_flip($required_keys), $dbconfig)) {
     $missing_key_msg = implode(', ', array_keys($diff));
-    log_(ERROR, "Section [database] missing keys: $missing_key_msg");
+    logm(ERROR, "Section [database] missing keys: $missing_key_msg");
     return false;
   }
 
@@ -300,10 +309,15 @@ function get_db_connection($cfg)
   $pass = $dbconfig['pass'];
   $name = $dbconfig['name'];
 
-  $conn = mysqli_connect($host, $user, $pass, $name, $port);
-  if (!$conn) {
-    log_(ERROR, "Could not connect to: mysqli://$user:$pass@$host:$port/$name: ".mysqli_connect_error());
-    return false;
+  try {
+    $conn = mysqli_connect($host, $user, $pass, $name, $port);
+    if ($conn === false) {
+      logm(ERROR, "Could not connect to: mysqli://$user:$pass@$host:$port/$name: ".mysqli_connect_error());
+    }
+  }
+  catch (mysqli_sql_exception $e) {
+    $conn = false;
+    logm(ERROR, "Could not connect to: mysqli://$user:$pass@$host:$port/$name: ".$e->getMessage());
   }
 
   return $conn;
@@ -322,7 +336,7 @@ function get_default($key, $a, $default, $maxlen = 0)
   }
 
   if ($maxlen > 0 && strlen($val) > $maxlen) {
-    log_(WARN, "Value for key [$key] exceeds maxlen=$maxlen; truncating");
+    logm(WARN, "Value for key [$key] exceeds maxlen=$maxlen; truncating");
     $val = substr($val, 0, $maxlen);
   }
   return $val;
@@ -369,7 +383,7 @@ function reply_and_exit($http_status)
 
   header("HTTP/1.1 $http_status", true, $http_status);
   if ($http_status != HTTP_OK) {
-    log_(ERROR, "[statserver] Returned HTTP status=$http_status");
+    logm(ERROR, "[statserver] Returned HTTP status=$http_status");
     $rc = 1;
   }
   else {

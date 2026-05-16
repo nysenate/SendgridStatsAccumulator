@@ -1,3 +1,4 @@
+
 CREATE TABLE summary (
     -- Keys representing the bucket to be summarized
     mailing_id int(10) NOT NULL,
@@ -5,19 +6,19 @@ CREATE TABLE summary (
     install_class varchar(8) NOT NULL,
     event varchar(50) NOT NULL,
 
-    category varchar(255) NOT NULL COMMENT 'A shortcut to the category for the mailing',
+    category varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL COMMENT 'A shortcut to the category for the mailing',
     count int(10) NOT NULL COMMENT 'The total number of events in the bucket',
     dt_first datetime NOT NULL COMMENT 'The datetime of the first event in the bucket',
     dt_last datetime NOT NULL COMMENT 'The datetime of the last event in the bucket',
 
     UNIQUE KEY (mailing_id,instance,install_class,event)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 -- TODO: set the auto increment KEY
 CREATE TABLE incoming (
   event_id int(10) unsigned NOT NULL PRIMARY KEY AUTO_INCREMENT,
   email varchar(255) DEFAULT NULL,
-  category varchar(255) DEFAULT NULL,
+  category varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci DEFAULT NULL,
   event_type ENUM('processed','bounce','open','delivered','click','spamreport','dropped','deferred','unsubscribe'),
   mailing_id int(10) unsigned DEFAULT NULL,
   job_id int(10) unsigned DEFAULT NULL,
@@ -41,56 +42,56 @@ CREATE TABLE incoming (
   KEY (dt_created),
   KEY (dt_received),
   KEY (is_test)
-) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci; -- Currently 20530724
+) ENGINE=InnoDB AUTO_INCREMENT=0 DEFAULT CHARSET=latin1;
 
 CREATE TABLE bounce (
     event_id int(10) unsigned PRIMARY KEY,
-    reason text,
+    reason text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci,
     type varchar(20),
     status varchar(8),
     smtp_id varchar(255)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 CREATE TABLE click (
     event_id int(10) unsigned PRIMARY KEY,
-    url varchar(255)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+    url varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci,
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 CREATE TABLE deferred (
     event_id int(10) unsigned PRIMARY KEY,
-    reason text,
+    reason text CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci,
     attempt_num  int(10) unsigned,
     smtp_id varchar(255)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 CREATE TABLE delivered (
     event_id int(10) unsigned PRIMARY KEY,
     response text,
     smtp_id varchar(255)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 CREATE TABLE dropped (
     event_id int(10) unsigned PRIMARY KEY,
     reason varchar(255),
     smtp_id varchar(255)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 CREATE TABLE open (
     event_id int(10) unsigned PRIMARY KEY
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 CREATE TABLE processed (
     event_id int(10) unsigned PRIMARY KEY,
     smtp_id varchar(255)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 CREATE TABLE spamreport (
     event_id int(10) unsigned PRIMARY KEY
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 CREATE TABLE unsubscribe (
     event_id int(10) unsigned PRIMARY KEY
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 
 -- On every event insert, sync with the summary table
@@ -143,19 +144,19 @@ CREATE TABLE instance (
     KEY (install_class),
     KEY (servername),
     KEY (name)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 
 CREATE TABLE message (
     id int unsigned PRIMARY KEY auto_increment,
     instance_id int unsigned,
     mailing_id int unsigned,
-    category varchar(255),
+    category varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci,
 
     KEY (category),
     KEY (mailing_id),
     FOREIGN KEY (instance_id) REFERENCES instance(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 
 CREATE TABLE archive (
@@ -182,7 +183,7 @@ CREATE TABLE archive (
     KEY (dt_received),
     KEY (dt_processed),
     FOREIGN KEY (message_id) REFERENCES message(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 DROP VIEW IF EXISTS events;
 CREATE VIEW events AS
@@ -216,7 +217,6 @@ DELIMITER |
                                  in_servername VARCHAR(255),
                                  in_name VARCHAR(255)) RETURNS int DETERMINISTIC
     BEGIN
-
         DECLARE instance_id INT(11) DEFAULT NULL;
         DECLARE no_more_rows TINYINT(1);
         DECLARE instance_cursor CURSOR FOR
@@ -233,27 +233,27 @@ DELIMITER |
 
         IF instance_id IS NULL THEN
             INSERT INTO instance(install_class, servername, name)
-                VALUES(in_install_class, in_servername, in_name);
+                          VALUES(in_install_class, in_servername, in_name);
             SET instance_id = LAST_INSERT_ID();
         END IF;
 
         RETURN instance_id;
-
     END
   |
 
   CREATE FUNCTION returnMessage(in_instance_id INT(11),
                                 in_mailing_id INT(11),
-                                in_category VARCHAR(255)) RETURNS int DETERMINISTIC
+                                in_category VARCHAR(255) CHARACTER SET utf8mb4)
+    RETURNS INT
+    DETERMINISTIC
     BEGIN
-
         DECLARE message_id INT(11) DEFAULT NULL;
         DECLARE no_more_rows TINYINT(1);
         DECLARE message_cursor CURSOR FOR
             SELECT id FROM message
             WHERE instance_id = in_instance_id
               AND mailing_id = in_mailing_id
-              AND CONVERT(category USING utf8)=CONVERT(in_category USING utf8);
+              AND category = in_category;
 
         DECLARE CONTINUE HANDLER FOR NOT FOUND SET no_more_rows = TRUE;
 
@@ -262,13 +262,12 @@ DELIMITER |
         CLOSE message_cursor;
 
         IF message_id IS NULL THEN
-            INSERT INTO message(instance_id, mailing_id, category)
-                VALUES(in_instance_id, in_mailing_id, in_category);
+            INSERT INTO message (instance_id, mailing_id, category)
+                         VALUES (in_instance_id, in_mailing_id, in_category);
             SET message_id = LAST_INSERT_ID();
         END IF;
 
         RETURN message_id;
-
       END
   |
 
